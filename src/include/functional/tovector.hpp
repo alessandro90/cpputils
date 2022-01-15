@@ -16,7 +16,7 @@ namespace cpputils {
 
 // clang-format off
 inline constexpr auto to_vector = detail::adaptors::range_adaptor{
-    [](std::ranges::input_range auto &&r) requires std::copyable<std::ranges::range_value_t<decltype(r)> {
+    [](std::ranges::input_range auto &&r) requires std::copyable<std::ranges::range_value_t<decltype(r)>> {
         std::vector<std::ranges::range_value_t<decltype(r)>> v;
         if constexpr (requires { std::ranges::size(r); }) {
             v.reserve(std::ranges::size(r));
