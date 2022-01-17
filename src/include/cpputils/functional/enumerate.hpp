@@ -40,6 +40,7 @@ public:
         using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
+        // TODO: use custom pair type
         using value_type = std::pair<Index, std::ranges::range_reference_t<Range>>;
         using pointer = void;
         using reference = value_type;

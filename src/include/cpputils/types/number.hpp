@@ -70,35 +70,19 @@ namespace detail {
         assert(v >= MIN_N(underlying_type) && v <= MAX_N(underlying_type));
     }
 
-    template <typename I>
-    struct number_common {
-    public:
-        explicit constexpr number_common() noexcept = default;
-        explicit constexpr number_common(I i) noexcept
-            : m_i{i} {}
-
-        [[nodiscard]] constexpr auto primitive() const noexcept { return m_i; }
-
-        template <convertible NewType>
-        [[nodiscard]] constexpr auto as() const noexcept {
-            if constexpr (std::is_integral_v<NewType> || std::is_floating_point_v<NewType>) {
-                return static_cast<NewType>(m_i);
-            } else {
-                return NewType{static_cast<detail::inner_type_t<NewType>>(m_i)};
-            }
+    template <convertible NewType>
+    [[nodiscard]] constexpr auto as(arithmetic auto v) noexcept {
+        if constexpr (std::is_integral_v<NewType> || std::is_floating_point_v<NewType>) {
+            return static_cast<NewType>(v);
+        } else {
+            return NewType{static_cast<detail::inner_type_t<NewType>>(v)};
         }
-
-    protected:
-        I m_i;
-    };
+    }
 }  // namespace detail
 
 template <detail::arithmetic I>
-class number : private detail::number_common<I> {
+class number {
 public:
-    using detail::number_common<I>::primitive;
-    using detail::number_common<I>::as;
-
     [[nodiscard]] inline static constexpr auto max() noexcept {
         return number{std::numeric_limits<I>::max()};
     };
@@ -109,24 +93,36 @@ public:
 
     explicit constexpr number() noexcept = default;
     explicit constexpr number(I i) noexcept
-        : detail::number_common<I>{i} {}
+        : m_i{i} {}
+
+    [[nodiscard]] constexpr auto val() const noexcept { return m_i; }
 
     template <detail::convertible NewType>
-    [[nodiscard]] explicit constexpr operator NewType() const noexcept { return this->template as<NewType>(); }
+    [[nodiscard]] explicit constexpr operator NewType() const noexcept { return detail::as<NewType>(m_i); }
 
     [[nodiscard]] constexpr auto operator<=>(number const &) const noexcept requires std::integral<I>
     = default;
 
+
     [[nodiscard]] constexpr auto operator<(number const &rhs) const noexcept requires std::floating_point<I> {
-        return this->m_i < rhs.m_i;
+        return m_i < rhs.m_i;
     }
 
     [[nodiscard]] constexpr auto operator>(number const &rhs) const noexcept requires std::floating_point<I> {
-        return this->m_i > rhs.m_i;
+        return m_i > rhs.m_i;
     }
 
     friend std::ostream &operator<<(std::ostream &os, number const &n) {
         return os << n.m_i;
+    }
+
+    template <detail::convertible NewType>
+    [[nodiscard]] constexpr auto as() const noexcept {
+        if constexpr (std::is_integral_v<NewType> || std::is_floating_point_v<NewType>) {
+            return static_cast<NewType>(m_i);
+        } else {
+            return NewType{static_cast<detail::inner_type_t<NewType>>(m_i)};
+        }
     }
 
     // wrapping ops
@@ -144,160 +140,164 @@ public:
 
     // Modulo ops
     constexpr auto &operator%=(number const &rhs) noexcept requires std::integral<I> {
-        this->m_i %= rhs.m_i;
+        m_i %= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator%(number const &rhs) noexcept requires std::integral<I> {
-        return number{static_cast<I>(this->m_i % rhs.m_i)};
+        return number{static_cast<I>(m_i % rhs.m_i)};
     }
 
     // Common maths
     constexpr auto &operator++() noexcept {
-        assert(this->m_i < max().primitive());
-        ++this->m_i;
+        assert(m_i < max().val());
+        ++m_i;
         return *this;
     }
 
     constexpr auto operator++(int) noexcept {
-        assert(this->m_i < max().primitive());
+        assert(m_i < max().val());
         auto const temp{*this};
-        ++this->m_i;
+        ++m_i;
         return temp;
     }
 
     constexpr auto &operator--() noexcept {
-        assert(this->m_i > min().primitive());
-        --this->m_i;
+        assert(m_i > min().val());
+        --m_i;
         return *this;
     }
 
     constexpr auto operator--(int) noexcept {
-        assert(this->m_i > min().primitive());
+        assert(m_i > min().val());
         auto const temp{*this};
-        --this->m_i;
+        --m_i;
         return temp;
     }
 
     constexpr auto &operator+=(number const &rhs) noexcept {
-        assert(this->m_i <= max().primitive() - rhs.m_i);
-        this->m_i += rhs.m_i;
+        assert(m_i <= max().val() - rhs.m_i);
+        m_i += rhs.m_i;
         return *this;
     }
 
     constexpr auto &operator-=(number const &rhs) noexcept {
-        assert(this->m_i >= min().primitive() + rhs.m_i);
-        this->m_i -= rhs.m_i;
+        assert(m_i >= min().val() + rhs.m_i);
+        m_i -= rhs.m_i;
         return *this;
     }
 
     constexpr auto &operator*=(number const &rhs) noexcept {
-        assert(this->m_i <= max().primitive() / rhs.m_i);
-        this->m_i *= rhs.m_i;
+        assert(m_i <= max().val() / rhs.m_i);
+        m_i *= rhs.m_i;
         return *this;
     }
 
     constexpr auto &operator/=(number const &rhs) noexcept {
-        this->m_i /= rhs.m_i;
+        m_i /= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator-() const noexcept requires std::is_signed_v<I> {
-        return number{static_cast<I>(-this->m_i)};
+        return number{static_cast<I>(-m_i)};
     }
 
     [[nodiscard]] constexpr auto operator+() const noexcept { return *this; }
 
     [[nodiscard]] constexpr auto operator+(number const &rhs) const noexcept {
-        assert(this->m_i <= max().primitive() - rhs.m_i);
-        return number{static_cast<I>(this->m_i + rhs.m_i)};
+        assert(m_i <= max().val() - rhs.m_i);
+        return number{static_cast<I>(m_i + rhs.m_i)};
     }
 
     [[nodiscard]] constexpr auto operator-(number const &rhs) const noexcept {
-        assert(this->m_i >= min().primitive() + rhs.m_i);
-        return number{static_cast<I>(this->m_i - rhs.m_i)};
+        assert(m_i >= min().val() + rhs.m_i);
+        return number{static_cast<I>(m_i - rhs.m_i)};
     }
 
     [[nodiscard]] constexpr auto operator*(number const &rhs) const noexcept {
-        assert(this->m_i <= max().primitive().primitive / rhs.m_i);
-        return number{static_cast<I>(this->m_i * rhs.m_i)};
+        assert(m_i <= max().val().val / rhs.m_i);
+        return number{static_cast<I>(m_i * rhs.m_i)};
     }
 
     [[nodiscard]] constexpr auto operator/(number const &rhs) const noexcept {
-        return number{static_cast<I>(this->m_i / rhs.m_i)};
+        return number{static_cast<I>(m_i / rhs.m_i)};
     }
 
     // bits operations
     constexpr auto &operator&=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        this->m_i &= rhs.m_i;
+        m_i &= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator&(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        return number{static_cast<I>(this->m_i & rhs.m_i)};
+        return number{static_cast<I>(m_i & rhs.m_i)};
     }
 
     constexpr auto &operator|=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        this->m_i |= rhs.m_i;
+        m_i |= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator|(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        return number{static_cast<I>(this->m_i | rhs.m_i)};
+        return number{static_cast<I>(m_i | rhs.m_i)};
     }
 
     constexpr auto &operator^=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        this->m_i ^= rhs.m_i;
+        m_i ^= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator^(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        return number{static_cast<I>(this->m_i ^ rhs.m_i)};
+        return number{static_cast<I>(m_i ^ rhs.m_i)};
     }
 
     constexpr auto &operator<<=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        this->m_i <<= rhs.m_i;
+        m_i <<= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator<<(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        return number{static_cast<I>(this->m_i << rhs.m_i)};
+        return number{static_cast<I>(m_i << rhs.m_i)};
     }
 
     constexpr auto &operator>>=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        this->m_i >>= rhs.m_i;
+        m_i >>= rhs.m_i;
         return *this;
     }
 
     [[nodiscard]] constexpr auto operator>>(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
-        return number{static_cast<I>(this->m_i >> rhs.m_i)};
+        return number{static_cast<I>(m_i >> rhs.m_i)};
     }
 
     [[nodiscard]] constexpr auto operator~() const noexcept requires detail::a_bit_ops_compatible<I> {
-        return number{static_cast<I>(~this->m_i)};
+        return number{static_cast<I>(~m_i)};
     }
+    // clang-format off
+private:
+    I m_i;
+    // clang-format on
 };
 
 template <>
-class number<bool> : private detail::number_common<bool> {
+class number<bool> {
 public:
-    using detail::number_common<bool>::primitive;
-    using detail::number_common<bool>::as;
-
     constexpr number() noexcept = default;
     explicit constexpr number(bool i) noexcept
-        : detail::number_common<bool>{i} {}
+        : m_i{i} {}
 
-    [[nodiscard]] explicit constexpr operator bool() const noexcept { return this->m_i; }
+    [[nodiscard]] explicit constexpr operator bool() const noexcept { return m_i; }
 
-    [[nodiscard]] constexpr auto operator!() const noexcept { return number{!this->m_i}; }
+    [[nodiscard]] constexpr auto operator!() const noexcept { return number{!m_i}; }
 
     template <detail::convertible NewType>
-    [[nodiscard]] explicit constexpr operator NewType() const noexcept { return as<NewType>(); }
+    [[nodiscard]] explicit constexpr operator NewType() const noexcept { return detail::as<NewType>(m_i); }
 
     friend std::ostream &operator<<(std::ostream &os, number const &n) {
         return os << (n.m_i ? "TRUE" : "FALSE");
     }
+
+private:
+    bool m_i;
 };
 
 // Aliases
@@ -358,7 +358,7 @@ namespace std {
 template <::cpputils::detail::arithmetic T>
 struct hash<::cpputils::number<T>> {
     constexpr ::std::size_t operator()(::cpputils::number<T> const &n) const noexcept {
-        return ::std::hash<::std::remove_const_t<T>>()(n.primitive());
+        return ::std::hash<::std::remove_const_t<T>>()(n.val());
     }
 };
 }  // namespace std
