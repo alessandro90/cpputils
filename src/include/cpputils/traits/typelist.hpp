@@ -189,10 +189,7 @@ struct reverse<typelist<Ts...>> {
 
 template <typename T>
 concept predicate = requires(T) {
-    {
-        T::value
-        }
-        -> std::convertible_to<bool>;
+    { T::value } -> std::convertible_to<bool>;
 };
 
 template <template <typename> typename F, typename... Ts>

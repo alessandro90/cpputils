@@ -1,5 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
-#include "types/number.hpp"
+#include "cpputils/types/number.hpp"
 #include <vector>
 
 using namespace cpputils;
