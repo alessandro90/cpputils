@@ -22,6 +22,7 @@ ${TEST_PATH}/enumerate_test.cpp
 ${TEST_PATH}/zip_test.cpp
 ${TEST_PATH}/zip_with_test.cpp
 ${TEST_PATH}/tovector_test.cpp
+${TEST_PATH}/typelist_test.cpp
 )
 
 add_executable(cpputils_test ${TEST_FILES})
