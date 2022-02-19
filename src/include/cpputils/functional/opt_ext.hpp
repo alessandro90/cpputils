@@ -34,7 +34,7 @@ namespace cpputils {
     using ret_t = RES_Ts(f, *opts);
 
     auto const ok = (opts && ...);
-    if constexpr (is<ret_t>::template specialization_of<std::optional>::value) {
+    if constexpr (is_specialization_v<ret_t, std::optional>) {
         return ok ? INVKs(f, *opts) : ret_t{};
     } else {
         return ok ? std::optional{INVKs(f, *opts)} : std::optional<ret_t>{};
@@ -51,13 +51,13 @@ namespace cpputils {
 
 inline constexpr void apply(auto &&f, an<std::optional> auto &&...opts) requires INVOCABLEs(f, *opts) {
     if ((opts && ...)) {
-        (std::invoke((f), FWD(opts)), ...);
+        (std::invoke((f), FWD(*opts)), ...);
     }
 }
 
 inline constexpr void apply_or_else(auto &&f, auto &&otherwise, an<std::optional> auto &&...opts) requires INVOCABLEs(f, *opts) {
     if ((opts && ...)) {
-        (std::invoke(f, FWD(opts)), ...);
+        (std::invoke(f, FWD(*opts)), ...);
     } else {
         INVK0(otherwise);
     }
@@ -76,7 +76,7 @@ namespace detail {
                 return INVKs(f, args);
             } else {
                 return optional_adaptor_closure{
-                    [... args_ = FWD(args), f_ = f](an<std::optional> auto &&opt) {
+                    [... args_ = FWD(args), f_ = f](an<std::optional> auto &&opt) -> decltype(auto) {
                         return std::invoke(f_, FWD(opt), args_...);
                     }};
             }
@@ -115,16 +115,20 @@ inline constexpr auto unwrap = detail::optional_adaptor{
     [](an<std::optional> auto &&opt) -> decltype(auto) {
         return FWD(opt).value();
     }};
+// clang-format off
 inline constexpr auto unwrap_or = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt, std::same_as<std::remove_cvref_t<decltype(FWD(opt).value())>> auto &&else_) {
+    [](an<std::optional> auto &&opt, auto &&else_) requires std::same_as<std::remove_cvref_t<decltype(FWD(opt).value())>, 
+                                                                         std::remove_cvref_t<decltype(else_)>> {
         return FWD(opt).value_or(FWD(else_));
     }};
+// clang-format on
 // clang-format off
-    inline constexpr auto unwrap_or_else = detail::optional_adaptor{
-        [](an<std::optional> auto &&opt, std::invocable<> auto &&else_) requires std::same_as<RES_T0(else_), std::remove_cvref_t<decltype(FWD(opt).value())>> {
-            if (opt) { return FWD(opt).value(); }
-            return std::invoke(FWD(else_));
-        }};
+inline constexpr auto unwrap_or_else = detail::optional_adaptor{
+    [](an<std::optional> auto &&opt, std::invocable<> auto &&else_) requires std::same_as<RES_T0(else_),
+                                                                                          std::remove_cvref_t<decltype(FWD(opt).value())>> {
+        if (opt) { return FWD(opt).value(); }
+        return std::invoke(FWD(else_));
+    }};
 // clang-format on
 }  // namespace cpputils
 

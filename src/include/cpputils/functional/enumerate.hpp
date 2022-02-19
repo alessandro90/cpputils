@@ -23,6 +23,11 @@ requires std::copyable<Index> &&
 // clang-format on
 class enumerate_view : public std::ranges::view_interface<enumerate_view<Range, Index>> {
 public:
+    struct enumeration {
+        Index index;
+        std::ranges::range_reference_t<Range> value;
+    };
+
     constexpr enumerate_view() = default;
 
     constexpr explicit enumerate_view(Range rng, Index start)
@@ -40,8 +45,7 @@ public:
         using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
-        // TODO: use custom pair type
-        using value_type = std::pair<Index, std::ranges::range_reference_t<Range>>;
+        using value_type = enumeration;
         using pointer = void;
         using reference = value_type;
 

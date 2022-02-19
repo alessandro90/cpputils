@@ -11,14 +11,13 @@
 namespace cpputils::tl {
 
 template <typename... Ts>
-struct typelist {
-};
+struct typelist {};
 
 template <typename...>
 struct is_typelist : std::false_type {};
 
 template <typename T>
-inline constexpr auto is_typelist_v = is<T>::template specialization_of_v<typelist>;
+inline constexpr auto is_typelist_v = is_specialization_v<T, typelist>;
 
 struct null {};
 
@@ -71,8 +70,8 @@ struct tail<typelist<T, Ts...>> {
 
 template <>
 struct tail<> {
-    template <typename... Ts>
-    using list = tail<Ts...>::list;
+    template <an<typelist> T>
+    using list = tail<T>::list;
 };
 
 // join
@@ -142,11 +141,12 @@ struct take<N> {
     using list = take<N, T>::list;
 };
 
-// as tuple
+// as
 template <template <typename...> typename, typename...>
 struct as;
 
 template <template <typename...> typename Target, typename... Ts>
+requires specializable<Target, Ts...>
 struct as<Target, typelist<Ts...>> {
     using type = Target<Ts...>;
 };
@@ -252,13 +252,6 @@ struct reverse<> {
 };
 
 // filter
-namespace detail {
-    template <typename T>
-    concept predicate = requires(T) {
-        { T::value } -> std::convertible_to<bool>;
-    };
-}  // namespace detail
-
 template <template <typename> typename F, typename... Ts>
 struct filter;
 
@@ -268,7 +261,7 @@ struct filter<F, typelist<>> {
 };
 
 template <template <typename> typename F, typename... Ts>
-requires(detail::predicate<F<Ts>> &&...) struct filter<F, typelist<Ts...>> {
+requires(predicate<F<Ts>> &&...) struct filter<F, typelist<Ts...>> {
     using list = std::conditional_t<
         F<typename inner<typename head<typelist<Ts...>>::list>::type>::value,
         typename join<
@@ -312,7 +305,7 @@ struct take_while<F, typelist<>> {
 };
 
 template <template <typename> typename F, typename... Ts>
-requires(detail::predicate<F<Ts>> &&...) struct take_while<F, typelist<Ts...>> {
+requires(predicate<F<Ts>> &&...) struct take_while<F, typelist<Ts...>> {
     using list = std::conditional_t<
         F<typename inner<typename head<typelist<Ts...>>::list>::type>::value,
         typename join<typename head<typelist<Ts...>>::list,
@@ -407,15 +400,7 @@ struct unique<> {
     using list = unique<T>::list;
 };
 
-namespace detail {
-    template <typename T>
-    concept transformation = requires(T) {
-        typename T::type;
-    };
-}  // namespace detail
-
 // map
-
 
 namespace detail {
     template <template <typename> typename F, typename... Ts>
@@ -436,7 +421,7 @@ template <template <typename> typename F, typename... Ts>
 struct map;
 
 template <template <typename> typename F, typename... Ts>
-requires(detail::transformation<F<Ts>> &&...) struct map<F, typelist<Ts...>> {
+requires(transformation<F<Ts>> &&...) struct map<F, typelist<Ts...>> {
     using list = detail::map_impl<F, typelist<>, typelist<Ts...>>::list;
 };
 
@@ -472,7 +457,7 @@ struct count_if<P, typelist<>> {
 };
 
 template <template <typename> typename P, typename... Ts>
-requires(detail::predicate<P<Ts>> &&...) struct count_if<P, typelist<Ts...>> {
+requires(predicate<P<Ts>> &&...) struct count_if<P, typelist<Ts...>> {
     inline static constexpr std::size_t value =
         (P<typename inner<typename head<typelist<Ts...>>::list>::type>::value ? 1 : 0)
         + count_if<P, typename tail<typelist<Ts...>>::list>::value;
@@ -508,7 +493,7 @@ struct drop_while<P, typelist<>> {
 };
 
 template <template <typename> typename P, typename... Ts>
-requires(detail::predicate<P<Ts>> &&...) struct drop_while<P, typelist<Ts...>> {
+requires(predicate<P<Ts>> &&...) struct drop_while<P, typelist<Ts...>> {
     using list = std::conditional_t<P<typename inner<typename head<typelist<Ts...>>::list>::type>::value,
                                     typename drop_while<P, typename tail<typelist<Ts...>>::list>::list,
                                     typelist<Ts...>>;
@@ -576,22 +561,23 @@ requires((!empty<lists>::value && ...)
 
 // compose
 namespace detail {
-    // template <typename Closure, typename Typelist>
-    // concept closure = an<Typelist, typelist> && requires() {
-    //     typename Closure::list<Typelist>;
-    // };
-    template <an<typelist> T, template <typename> typename Closure, template <typename...> typename... Closures>
-    struct compose_impl {
-        using list = compose_impl<typename Closure<T>::list, Closures...>::list;
+    template <typename Closure, typename Typelist>
+    concept closure = an<Typelist, typelist> && requires() {
+        typename Closure::list<Typelist>;
     };
 
-    template <an<typelist> T, template <typename> typename Closure>
+    template <an<typelist> T, closure<T> Closure, typename... Closures>
+    struct compose_impl {
+        using list = compose_impl<typename Closure::list<T>, Closures...>::list;
+    };
+
+    template <an<typelist> T, closure<T> Closure>
     struct compose_impl<T, Closure> {
-        using list = typename Closure<T>::list;
+        using list = typename Closure::list<T>;
     };
 }  // namespace detail
 
-template <template <typename...> typename... Closures>
+template <typename... Closures>
 struct compose {
     template <an<typelist> T>
     using list = detail::compose_impl<T, Closures...>::list;
@@ -636,11 +622,32 @@ struct fold<F> {
     using list = fold<F, T>::list;
 };
 
-// operator>> for closures
-template <typename... Ts, template <typename...> typename... Closures>
-consteval auto operator>>(typelist<Ts...>, compose<Closures...>) {
-    return typename compose<Closures...>::list<typelist<Ts...>>{};
-}
+// compose_predicate
+template <template <typename> typename... P>
+struct compose_predicate {
+    template <typename T>
+    requires(predicate<P<T>> &&...) struct composed
+        : std::conjunction<P<T>...> {};
+};
+
+// compose_trasformation
+template <template <typename> typename E, template <typename> typename... F>
+struct compose_transformation {
+    template <typename T>
+    requires transformation<E<T>>
+    struct composed {
+        using type = typename compose_transformation<F...>::composed<typename E<T>::type>::type;
+    };
+};
+
+template <template <typename> typename F>
+struct compose_transformation<F> {
+    template <typename T>
+    requires transformation<F<T>>
+    struct composed {
+        using type = typename F<T>::type;
+    };
+};
 
 // keep (integers)
 // get (integer)

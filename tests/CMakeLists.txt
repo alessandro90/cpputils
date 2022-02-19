@@ -16,6 +16,7 @@ set(TEST_PATH ${PROJECT_SOURCE_DIR}/tests)
 include_directories(${PROJECT_SOURCE_DIR}/src/include)
 
 set(TEST_FILES
+${TEST_PATH}/number_is_error_result_test.cpp
 ${TEST_PATH}/number_test.cpp
 ${TEST_PATH}/opt_ext_test.cpp
 ${TEST_PATH}/enumerate_test.cpp

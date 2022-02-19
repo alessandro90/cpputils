@@ -1,6 +1,8 @@
 #ifndef CPPUTILS_ADAPTORS_RANGE_HPP
 #define CPPUTILS_ADAPTORS_RANGE_HPP
 
+// Adapted from http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2387r0.html
+
 #include <concepts>
 #include <functional>
 #include <ranges>
