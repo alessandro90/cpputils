@@ -5,7 +5,7 @@
 #include <tuple>
 #include <utility>
 
-#include "internal/iter_utils.hpp"
+#include "../internal/iter_utils.hpp"
 
 
 namespace cpputils {
@@ -13,13 +13,13 @@ namespace cpputils {
 template <std::ranges::view... Containers>
 requires(std::ranges::input_range<Containers> &&...) &&
         (sizeof...(Containers) > 0)
-class zip_view : public std::ranges::view_interface<zip_view<Containers...>> {
+class zip : public std::ranges::view_interface<zip<Containers...>> {
     // clang-format on
     using tuple_type = std::tuple<Containers...>;
 
 public:
-    constexpr zip_view() = default;
-    explicit constexpr zip_view(Containers... containers)
+    constexpr zip() = default;
+    explicit constexpr zip(Containers... containers)
         : m_data{containers...} {}
 
 
@@ -28,6 +28,7 @@ public:
 
     public:
         struct sentinel {};
+
         using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
@@ -35,7 +36,7 @@ public:
         using reference = value_type;
         using pointer = void;
 
-        explicit constexpr iterator() = default;
+        constexpr iterator() = default;
 
         explicit constexpr iterator(tuple_type const &ref)
             : m_tup{ref}
@@ -84,6 +85,6 @@ private:
 };
 
 template <typename... Containers>
-zip_view(Containers &&...) -> zip_view<std::ranges::views::all_t<Containers>...>;
+zip(Containers &&...) -> zip<std::ranges::views::all_t<Containers>...>;
 }  // namespace cpputils
 #endif

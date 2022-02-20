@@ -1,9 +1,9 @@
 #ifndef CPPUTILS_FUNCTIONAL_ENUMERATE_HPP
 #define CPPUTILS_FUNCTIONAL_ENUMERATE_HPP
 
+#include "../internal/adaptors.hpp"
+#include "../internal/iter_utils.hpp"
 #include "../traits/cpputils_concepts.hpp"
-#include "internal/adaptors.hpp"
-#include "internal/iter_utils.hpp"
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -15,7 +15,7 @@
 namespace cpputils {
 
 template <std::ranges::input_range Range,
-          std::weakly_incrementable Index = std::size_t>
+          minimal_incrementable Index = std::size_t>
 // clang-format off
 requires std::copyable<Index> &&
          std::is_default_constructible_v<Index> &&
@@ -30,7 +30,7 @@ public:
 
     constexpr enumerate_view() = default;
 
-    constexpr explicit enumerate_view(Range rng, Index start)
+    constexpr enumerate_view(Range rng, Index start)
         : m_iter{rng}
         , m_start{start} {}
 
@@ -49,7 +49,7 @@ public:
         using pointer = void;
         using reference = value_type;
 
-        constexpr explicit iterator() = default;
+        constexpr iterator() = default;
 
         constexpr explicit iterator(Range rng, Index index)
             : m_iter{std::ranges::begin(rng)}
@@ -97,14 +97,15 @@ private:
 };
 
 template <typename Range, typename Index>
-enumerate_view(Range &&, Index &&)
-    -> enumerate_view<std::ranges::views::all_t<Range>, std::remove_cvref_t<Index>>;
+enumerate_view(Range &&, Index &&) -> enumerate_view<std::ranges::views::all_t<Range>, std::remove_cvref_t<Index>>;
 
+// clang-format off
 inline constexpr auto enumerate = detail::adaptors::range_adaptor{
-    [](std::ranges::input_range auto &&r, auto &&i = std::size_t{0U}) {
+    []<typename T = std::size_t>(std::ranges::input_range auto &&r, T i = std::size_t{}) {
         return enumerate_view{std::forward<decltype(r)>(r), std::forward<decltype(i)>(i)};
-    }  // namespace cpputils
+    }
 };
+// clang-format on
 
 }  // namespace cpputils
 

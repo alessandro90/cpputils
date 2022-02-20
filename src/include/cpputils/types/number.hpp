@@ -15,6 +15,8 @@
 
 
 // TODO:
+
+// Policy for wrong computations
 // - wrapping for signed numbers
 
 // NOLINTNEXTLINE
@@ -391,23 +393,23 @@ using boolean = number<bool>;
 // NOLINTNEXTLINE
 #define NUMBER_LITERAL_OPERATOR_FLOATING(name) NUMBER_LITERAL_GENERIC(name, long double)
 
+namespace literals {
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(u8)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(u16)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(u32)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(u64)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(i8)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(i16)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(i32)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(i64)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(isize)
+    NUMBER_LITERAL_OPERATOR_INTEGRAL(usize)
+    NUMBER_LITERAL_OPERATOR_FLOATING(f32)
+    NUMBER_LITERAL_OPERATOR_FLOATING(f64)
 
-NUMBER_LITERAL_OPERATOR_INTEGRAL(u8)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(u16)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(u32)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(u64)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(i8)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(i16)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(i32)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(i64)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(isize)
-NUMBER_LITERAL_OPERATOR_INTEGRAL(usize)
-NUMBER_LITERAL_OPERATOR_FLOATING(f32)
-NUMBER_LITERAL_OPERATOR_FLOATING(f64)
-
-inline constexpr auto True = boolean{true};
-inline constexpr auto False = boolean{false};
-
+    inline constexpr auto True = boolean{true};
+    inline constexpr auto False = boolean{false};
+}  // namespace literals
 #undef NUMBER_LITERAL_OPERATOR_INTEGRAL
 #undef NUMBER_LITERAL_OPERATOR_FLOATING
 #undef NUMBER_LITERAL_GENERIC
@@ -421,6 +423,43 @@ struct hash<::cpputils::number<T>> {
     constexpr ::std::size_t operator()(::cpputils::number<T> const &n) const noexcept {
         return ::std::hash<::std::remove_const_t<T>>()(n.val());
     }
+};
+
+template <typename I>
+struct numeric_limits<::cpputils::number<I>> {
+    inline static constexpr auto is_specialized = numeric_limits<I>::is_specialized;
+    inline static constexpr auto is_signed = numeric_limits<I>::is_signed;
+    inline static constexpr auto is_integer = numeric_limits<I>::is_integer;
+    inline static constexpr auto is_exact = numeric_limits<I>::is_exact;
+    inline static constexpr auto has_infinity = numeric_limits<I>::has_infinity;
+    inline static constexpr auto has_quiet_NaN = numeric_limits<I>::has_quiet_NaN;
+    inline static constexpr auto has_signaling_NaN = numeric_limits<I>::has_signaling_NaN;
+    inline static constexpr auto has_denorm = numeric_limits<I>::has_denorm;
+    inline static constexpr auto has_denorm_loss = numeric_limits<I>::has_denorm_loss;
+    inline static constexpr auto round_style = numeric_limits<I>::round_style;
+    inline static constexpr auto is_iec559 = numeric_limits<I>::is_iec559;
+    inline static constexpr auto is_bounded = numeric_limits<I>::is_bounded;
+    inline static constexpr auto is_modulo = numeric_limits<I>::is_modulo;
+    inline static constexpr auto digits = numeric_limits<I>::digits;
+    inline static constexpr auto digits10 = numeric_limits<I>::digits10;
+    inline static constexpr auto max_digits10 = numeric_limits<I>::max_digits10;
+    inline static constexpr auto radix = numeric_limits<I>::radix;
+    inline static constexpr auto min_exponent = numeric_limits<I>::min_exponent;
+    inline static constexpr auto min_exponent10 = numeric_limits<I>::min_exponent10;
+    inline static constexpr auto max_exponent = numeric_limits<I>::max_exponent;
+    inline static constexpr auto max_exponent10 = numeric_limits<I>::max_exponent10;
+    inline static constexpr auto traps = numeric_limits<I>::traps;
+    inline static constexpr auto tinyness_before = numeric_limits<I>::tinyness_before;
+
+    static constexpr auto min() { return numeric_limits<I>::min(); }
+    static constexpr auto lowest() { return numeric_limits<I>::lowest(); }
+    static constexpr auto max() { return numeric_limits<I>::max(); }
+    static constexpr auto epsilon() { return numeric_limits<I>::epsilon(); }
+    static constexpr auto round_error() { return numeric_limits<I>::round_error(); }
+    static constexpr auto infinity() { return numeric_limits<I>::infinity(); }
+    static constexpr auto quiet_NaN() { return numeric_limits<I>::quiet_NaN(); }
+    static constexpr auto signaling_NaN() { return numeric_limits<I>::signaling_NaN(); }
+    static constexpr auto denorm_min() { return numeric_limits<I>::denorm_min(); }
 };
 }  // namespace std
 #endif

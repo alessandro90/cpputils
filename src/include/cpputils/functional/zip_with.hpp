@@ -8,21 +8,21 @@
 #include <type_traits>
 #include <utility>
 
-#include "internal/iter_utils.hpp"
+#include "../internal/iter_utils.hpp"
 
 namespace cpputils {
 // clang-format off
 template <typename Func, std::ranges::view... Containers>
 requires (std::ranges::input_range<Containers> &&...) &&
          std::regular_invocable<Func, std::ranges::range_reference_t<Containers>...> &&
-         (sizeof...(Containers) > 0) 
-class zip_with_view : public std::ranges::view_interface<zip_with_view<Func, Containers...>> {
+         (sizeof...(Containers) > 0)
+class zip_with : public std::ranges::view_interface<zip_with<Func, Containers...>> {
     // clang-format on
     using tuple_type = std::tuple<Containers...>;
 
 public:
-    constexpr zip_with_view() = default;
-    explicit constexpr zip_with_view(Func func, Containers... containers)
+    constexpr zip_with() = default;
+    explicit constexpr zip_with(Func func, Containers... containers)
         : m_func{func}
         , m_data{containers...} {}
 
@@ -32,6 +32,7 @@ public:
 
     public:
         struct sentinel {};
+
         using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
@@ -39,14 +40,14 @@ public:
         using pointer = void;
         using reference = value_type;
 
-        explicit constexpr iterator() = default;
+        constexpr iterator() = default;
 
-        explicit constexpr iterator(Func const &func, tuple_type const &ref)
+        constexpr iterator(Func const &func, tuple_type const &ref)
             : m_func_iter{func}
             , m_tup{ref}
             , m_it_tup{detail::make_iter_tuple(ref, detail::iseq<Containers...>())} {}
 
-        constexpr decltype(auto) operator*() { return call(detail::iseq<Containers...>()); }
+        constexpr decltype(auto) operator*() const { return call(detail::iseq<Containers...>()); }
 
         constexpr auto operator->() = delete;
 
@@ -77,7 +78,7 @@ public:
         tuple_it_type m_it_tup{};
 
         template <std::size_t... I>
-        constexpr decltype(auto) call(std::index_sequence<I...>) {
+        constexpr decltype(auto) call(std::index_sequence<I...>) const {
             return std::invoke(m_func_iter, *std::get<I>(m_it_tup)...);
         }
     };
@@ -90,8 +91,9 @@ private:
     tuple_type m_data;
 };
 
+
 template <typename Func, typename... Containers>
-zip_with_view(Func, Containers &&...) -> zip_with_view<Func, std::ranges::views::all_t<Containers>...>;
+zip_with(Func, Containers &&...) -> zip_with<Func, std::ranges::views::all_t<Containers>...>;
 
 }  // namespace cpputils
 

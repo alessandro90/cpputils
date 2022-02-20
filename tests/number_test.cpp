@@ -4,6 +4,7 @@
 // #include <iostream>
 
 using namespace cpputils;
+using namespace cpputils::literals;
 using namespace Catch::literals;
 
 namespace {
