@@ -144,14 +144,6 @@ namespace detail {
 template <detail::arithmetic I>
 class number {
 public:
-    [[nodiscard]] inline static constexpr auto max() noexcept {
-        return number{std::numeric_limits<I>::max()};
-    };
-
-    [[nodiscard]] static constexpr auto min() noexcept {
-        return number{std::numeric_limits<I>::min()};
-    };
-
     explicit constexpr number() noexcept = default;
     explicit constexpr number(I i) noexcept
         : m_i{i} {}
@@ -257,7 +249,7 @@ public:
     }
 
     [[nodiscard]] constexpr auto operator-() const noexcept requires std::is_signed_v<I> {
-        assert(m_i != min());
+        assert(!detail::is_error_result_mul(m_i, I{-1}));
         return number{static_cast<I>(-m_i)};
     }
 
@@ -451,15 +443,15 @@ struct numeric_limits<::cpputils::number<I>> {
     inline static constexpr auto traps = numeric_limits<I>::traps;
     inline static constexpr auto tinyness_before = numeric_limits<I>::tinyness_before;
 
-    static constexpr auto min() { return numeric_limits<I>::min(); }
-    static constexpr auto lowest() { return numeric_limits<I>::lowest(); }
-    static constexpr auto max() { return numeric_limits<I>::max(); }
-    static constexpr auto epsilon() { return numeric_limits<I>::epsilon(); }
-    static constexpr auto round_error() { return numeric_limits<I>::round_error(); }
-    static constexpr auto infinity() { return numeric_limits<I>::infinity(); }
-    static constexpr auto quiet_NaN() { return numeric_limits<I>::quiet_NaN(); }
-    static constexpr auto signaling_NaN() { return numeric_limits<I>::signaling_NaN(); }
-    static constexpr auto denorm_min() { return numeric_limits<I>::denorm_min(); }
+    static constexpr auto min() { return ::cpputils::number<I>{numeric_limits<I>::min()}; }
+    static constexpr auto lowest() { return ::cpputils::number<I>{numeric_limits<I>::lowest()}; }
+    static constexpr auto max() { return ::cpputils::number<I>{numeric_limits<I>::max()}; }
+    static constexpr auto epsilon() { return ::cpputils::number<I>{numeric_limits<I>::epsilon()}; }
+    static constexpr auto round_error() { return ::cpputils::number<I>{numeric_limits<I>::round_error()}; }
+    static constexpr auto infinity() { return ::cpputils::number<I>{numeric_limits<I>::infinity()}; }
+    static constexpr auto quiet_NaN() { return ::cpputils::number<I>{numeric_limits<I>::quiet_NaN()}; }
+    static constexpr auto signaling_NaN() { return ::cpputils::number<I>{numeric_limits<I>::signaling_NaN()}; }
+    static constexpr auto denorm_min() { return ::cpputils::number<I>{numeric_limits<I>::denorm_min()}; }
 };
 }  // namespace std
 #endif

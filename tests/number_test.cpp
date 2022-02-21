@@ -400,6 +400,8 @@ TEST_CASE("Size assertions") {  // NOLINT
     REQUIRE(sizeof(i64) == sizeof(std::int64_t));
     REQUIRE(sizeof(usize) == sizeof(std::size_t));
     REQUIRE(sizeof(isize) == sizeof(std::ptrdiff_t));
+    REQUIRE(sizeof(f32) == sizeof(float));
+    REQUIRE(sizeof(f64) == sizeof(double));
     REQUIRE(sizeof(boolean) == sizeof(bool));
 }
 
@@ -411,16 +413,42 @@ TEST_CASE("Hashable test") {
     }
 }
 
-TEST_CASE("Trivial type check") {
-    REQUIRE((std::is_trivial_v<u8>));
-    REQUIRE((std::is_trivial_v<i8>));
-    REQUIRE((std::is_trivial_v<u16>));
-    REQUIRE((std::is_trivial_v<i16>));
-    REQUIRE((std::is_trivial_v<u32>));
-    REQUIRE((std::is_trivial_v<i32>));
-    REQUIRE((std::is_trivial_v<u64>));
-    REQUIRE((std::is_trivial_v<i64>));
-    REQUIRE((std::is_trivial_v<usize>));
-    REQUIRE((std::is_trivial_v<isize>));
-    REQUIRE((std::is_trivial_v<boolean>));
+TEMPLATE_TEST_CASE("Trivial type check", "", i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, f32, f64) {  // NOLINT
+    REQUIRE((std::is_trivial_v<TestType>));
+}
+
+TEMPLATE_TEST_CASE("numeric limits specialization", "", i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, f32, f64) {
+    using inner_t = detail::inner_type_t<TestType>;
+    static_assert(std::numeric_limits<TestType>::is_specialized == std::numeric_limits<inner_t>::is_specialized);
+    static_assert(std::numeric_limits<TestType>::is_signed == std::numeric_limits<inner_t>::is_signed);
+    static_assert(std::numeric_limits<TestType>::is_integer == std::numeric_limits<inner_t>::is_integer);
+    static_assert(std::numeric_limits<TestType>::is_exact == std::numeric_limits<inner_t>::is_exact);
+    static_assert(std::numeric_limits<TestType>::has_infinity == std::numeric_limits<inner_t>::has_infinity);
+    static_assert(std::numeric_limits<TestType>::has_quiet_NaN == std::numeric_limits<inner_t>::has_quiet_NaN);
+    static_assert(std::numeric_limits<TestType>::has_signaling_NaN == std::numeric_limits<inner_t>::has_signaling_NaN);
+    static_assert(std::numeric_limits<TestType>::has_denorm == std::numeric_limits<inner_t>::has_denorm);
+    static_assert(std::numeric_limits<TestType>::has_denorm_loss == std::numeric_limits<inner_t>::has_denorm_loss);
+    static_assert(std::numeric_limits<TestType>::round_style == std::numeric_limits<inner_t>::round_style);
+    static_assert(std::numeric_limits<TestType>::is_iec559 == std::numeric_limits<inner_t>::is_iec559);
+    static_assert(std::numeric_limits<TestType>::is_bounded == std::numeric_limits<inner_t>::is_bounded);
+    static_assert(std::numeric_limits<TestType>::is_modulo == std::numeric_limits<inner_t>::is_modulo);
+    static_assert(std::numeric_limits<TestType>::digits == std::numeric_limits<inner_t>::digits);
+    static_assert(std::numeric_limits<TestType>::digits10 == std::numeric_limits<inner_t>::digits10);
+    static_assert(std::numeric_limits<TestType>::max_digits10 == std::numeric_limits<inner_t>::max_digits10);
+    static_assert(std::numeric_limits<TestType>::radix == std::numeric_limits<inner_t>::radix);
+    static_assert(std::numeric_limits<TestType>::min_exponent == std::numeric_limits<inner_t>::min_exponent);
+    static_assert(std::numeric_limits<TestType>::min_exponent10 == std::numeric_limits<inner_t>::min_exponent10);
+    static_assert(std::numeric_limits<TestType>::max_exponent == std::numeric_limits<inner_t>::max_exponent);
+    static_assert(std::numeric_limits<TestType>::max_exponent10 == std::numeric_limits<inner_t>::max_exponent10);
+    static_assert(std::numeric_limits<TestType>::traps == std::numeric_limits<inner_t>::traps);
+    static_assert(std::numeric_limits<TestType>::tinyness_before == std::numeric_limits<inner_t>::tinyness_before);
+    static_assert(std::numeric_limits<TestType>::min().template as<inner_t>() == std::numeric_limits<inner_t>::min());
+    static_assert(std::numeric_limits<TestType>::lowest().template as<inner_t>() == std::numeric_limits<inner_t>::lowest());
+    static_assert(std::numeric_limits<TestType>::max().template as<inner_t>() == std::numeric_limits<inner_t>::max());
+    static_assert(std::numeric_limits<TestType>::epsilon().template as<inner_t>() == std::numeric_limits<inner_t>::epsilon());
+    static_assert(std::numeric_limits<TestType>::round_error().template as<inner_t>() == std::numeric_limits<inner_t>::round_error());
+    static_assert(std::numeric_limits<TestType>::infinity().template as<inner_t>() == std::numeric_limits<inner_t>::infinity());
+    // static_assert(std::numeric_limits<TestType>::quiet_NaN().template as<inner_t>() == std::numeric_limits<inner_t>::quiet_NaN());
+    // static_assert(std::numeric_limits<TestType>::signaling_NaN().template as<inner_t>() == std::numeric_limits<inner_t>::signaling_NaN());
+    static_assert(std::numeric_limits<TestType>::denorm_min().template as<inner_t>() == std::numeric_limits<inner_t>::denorm_min());
 }
