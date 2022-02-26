@@ -102,7 +102,7 @@ inline constexpr auto or_else = detail::optional_adaptor{
         if (!opt) { std::invoke(f); }
         return FWD(opt);
     }};
-inline constexpr auto pipe = detail::optional_adaptor{
+inline constexpr auto transform = detail::optional_adaptor{
     [](an<std::optional> auto &&opt, std::invocable<std::remove_cvref_t<decltype(FWD(opt).value())>> auto &&f) -> decltype(auto) {
         return map(FWD(f), FWD(opt));
     }};

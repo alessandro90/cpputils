@@ -1,0 +1,62 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - '**/LICENSE'
+      - '**/*.txt'
+
+jobs:
+  Test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os:
+          - ubuntu-20.04
+        compiler:
+          - gcc-11
+        generator:
+          - 'Ninja Multi-Config'
+        build_type:
+          - Release
+          - Debug
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Cpp
+        uses: aminya/setup-cpp@v1
+        with:
+          compiler: ${{ matrix.compiler }}
+          vcvarsall: ${{ contains(matrix.os, 'windows' )}}
+          cmake: true
+          ninja: true
+          ccache: true
+          gcovr: true
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DCPPUTILS_ENABLE_TESTING=ON -DCPPUTILS_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' }}
+
+      - name: Build
+        run: |
+          cmake --build ./build --config ${{matrix.build_type}}
+
+      - name: Unix - Test and coverage
+        working-directory: ./build
+        run: |
+          ctest -C ${{matrix.build_type}}
+          gcovr --root ../ --delete --exclude "_deps/*" --print-summary --xml-pretty --xml coverage.xml .
+
+      - name: Publish to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          flags: ${{ runner.os }}
+          name: ${{ runner.os }}-coverage
+          files: ./build/coverage.xml

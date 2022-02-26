@@ -235,24 +235,24 @@ TEST_CASE("opt test", "[apply_or_else]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[pipe]") {  // NOLINT
+TEST_CASE("opt test", "[transform]") {  // NOLINT
     {
         auto const out = intopt{0}
-                         >> pipe(increment)
-                         >> pipe(increment_opt);
+                         >> transform(increment)
+                         >> transform(increment_opt);
         REQUIRE(out.has_value());
         REQUIRE(out.value() == 2);
     }
     {
         auto const out = intopt{}
-                         >> pipe(increment)
-                         >> pipe(increment_opt);
+                         >> transform(increment)
+                         >> transform(increment_opt);
         REQUIRE(!out.has_value());
     }
     {
         auto const out = intopt{0}
-                         >> pipe(increment)
-                         >> pipe([](int x) {
+                         >> transform(increment)
+                         >> transform([](int x) {
                                if (x == 1) { return intopt{}; }
                                return intopt{2};
                            });

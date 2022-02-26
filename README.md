@@ -66,7 +66,7 @@ assert(!False);
 ### [zip](src/include/cpputils/functional/zip.hpp)/[zip_with](src/include/cpputils/functional/zip_with.hpp)
 
 `zip` takes an arbitrary values of containers (lvalues) and return a view of the zipped values. The shortest container is the limiting one.
-`zip` is a (lazy) range, and therefore support the pipe syntax only as initial value (just like std::vector)
+`zip` is a (lazy) range, and therefore support the transform syntax only as initial value (just like std::vector)
 
 #### **Example**
 
@@ -111,7 +111,7 @@ assert(!False);
 
 ### [enumerate](src/include/cpputils/functional/enumerate.hpp)
 
-Compatible with pipe syntax. Custom types are supported as index (see example).
+Compatible with transform syntax. Custom types are supported as index (see example).
 
 #### **Example**
 
@@ -180,7 +180,7 @@ map([](int i, int j) { return std::optional{i + j} }, a, std::optional<int>{}); 
 map([](int i, int j) { return std::optional{i + j} }, std::optional<int>{}, std::optional<int>{}); // == std::optional{}
 ```
 
-### pipe
+### transform
 
 Takes an optional and a callable and apply the callable to the optional's contained element, if any. Otherwise return an empty optional. The callable can itself return an optional (just like for map), the result is flattened. For a more readable syntax use the `>>` operator.
 
@@ -190,12 +190,12 @@ Takes an optional and a callable and apply the callable to the optional's contai
 using namespace cpputils;
 
 std::optional{1}
-    >> pipe([](int i) { return i + 1; })
-    >> pipe([](int i) { return i * 2; }); // == std::optional{4}
+    >> transform([](int i) { return i + 1; })
+    >> transform([](int i) { return i * 2; }); // == std::optional{4}
 
 std::optional{1}
-    >> pipe([](int i) { return i + 1; })
-    >> pipe([](int i) { return std::optional{i * 2}; }); // == std::optional{4}
+    >> transform([](int i) { return i + 1; })
+    >> transform([](int i) { return std::optional{i * 2}; }); // == std::optional{4}
 ```
 
 ### if_value/or_else

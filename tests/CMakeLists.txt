@@ -1,5 +1,10 @@
 cmake_minimum_required (VERSION 3.10.0)
 
+set(CPPUTILS_ENABLE_COVERAGE FALSE CACHE BOOL "Enable coverage")
+if (CPPUTILS_ENABLE_COVERAGE)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -fprofile-arcs -ftest-coverage -O0 -g")
+endif()
+
 add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wfloat-equal -Wconversion -Wsign-conversion)
 
 Include(FetchContent)
