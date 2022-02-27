@@ -62,22 +62,14 @@ namespace detail {
     concept convertible = arithmetic<T> || an<T, number>;
 
     template <typename underlying_type>
-    consteval void assert_valid_range(std::integral auto v) {
-#ifndef NDEBUG
+    consteval void assert_valid_range([[maybe_unused]] std::integral auto v) {
         assert(std::cmp_greater_equal(v, MIN_N(underlying_type))
                && std::cmp_less_equal(v, MAX_N(underlying_type)));
-#else
-        [[maybe_unused]] v;
-#endif
     }
 
     template <typename underlying_type>
-    consteval void assert_valid_range(std::floating_point auto v) {
-#ifndef NDEBUG
+    consteval void assert_valid_range([[maybe_unused]] std::floating_point auto v) {
         assert(v >= MIN_N(underlying_type) && v <= MAX_N(underlying_type));
-#else
-        [[maybe_unused]] v;
-#endif
     }
 
     template <convertible NewType>
