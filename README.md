@@ -88,7 +88,7 @@ assert(!False);
         | std::ranges::transform([](int i) { return i * 2; });
 ```
 
-`zip_view` is similar to `zip` but it first takes a callable to apply to each of the zipped elements.
+`zip_with` is similar to `zip` but it first takes a callable to apply to each of the zipped elements.
 
 #### **Example**
 
@@ -97,7 +97,7 @@ assert(!False);
     auto const sum = [](int a, int b) { return a + b };
     std::array arr{1, 2, 3};
     std::vector v{10, 20, 30, 40};
-    for (auto i : zip_view(sum, arr, v)) {
+    for (auto i : zip_with(sum, arr, v)) {
         std::cout << i << '\n';
     }
     // Will print
@@ -105,7 +105,7 @@ assert(!False);
     // 22
     // 33
     // This is valid
-    zip_view(sum, arr, v)
+    zip_with(sum, arr, v)
         | std::ranges::transform([](int i) { return i * 2; });
 ```
 
