@@ -1,5 +1,7 @@
 # CPPUTILS
 
+![CI@master](https://github.com/alessandro90/cpputils/actions/workflows/ci.yml/badge.svg)
+
 This is a repo in which I put stuff I think it could be usefull or interesting to some degree. It hasn't a precise goal or scope.
 For now it is a header-only library. Its components are
 
@@ -288,3 +290,5 @@ static_assert(tl::specializable<std::optional, int, char>); // fail
 ## Details
 
 The tests are downloaded automatically in the build folder and are the only buildable thing. So doing `make` will build them. All typelist tests are compile-time checks, so if a test fail you get a compile-time error.
+
+For now only gcc-11 on Ubuntu is used by the CI.
