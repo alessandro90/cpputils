@@ -19,12 +19,16 @@ jobs:
         os:
           - ubuntu-20.04
         compiler:
-          - gcc-11
+          - gcc
         generator:
           - 'Ninja Multi-Config'
         build_type:
           - Release
           - Debug
+
+        include:
+          - compiler: gcc
+            gcov_executable: gcov
 
     steps:
       - uses: actions/checkout@v2
@@ -51,7 +55,7 @@ jobs:
         working-directory: ./build
         run: |
           ctest -C ${{matrix.build_type}}
-          gcovr --root ../ --delete --exclude "_deps/*" --print-summary --xml-pretty --xml coverage.xml .
+          gcovr -j ${{env.nproc}} --delete --root ../ --print-summary --xml-pretty --xml coverage.xml . --gcov-executable '${{ matrix.gcov_executable }}'
 
       - name: Publish to codecov
         uses: codecov/codecov-action@v2
