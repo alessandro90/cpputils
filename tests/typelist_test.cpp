@@ -7,7 +7,7 @@ using namespace cpputils::tl;
 
 namespace {
 template <typename A, typename B>
-consteval void check_same() { static_assert(std::is_same_v<A, B>); }
+void check_same() { STATIC_REQUIRE(std::is_same_v<A, B>); }
 
 struct A;
 struct B;
@@ -63,13 +63,13 @@ TEST_CASE("Typelist static assertions") {
 
     check_same<as<std::tuple, typelist<A, B, C>>::type, std::tuple<A, B, C>>();
 
-    static_assert(len<typelist<>>::value == 0);
-    static_assert(len<typelist<A>>::value == 1);
-    static_assert(len<typelist<A, D>>::value == 2);
+    STATIC_REQUIRE(len<typelist<>>::value == 0);
+    STATIC_REQUIRE(len<typelist<A>>::value == 1);
+    STATIC_REQUIRE(len<typelist<A, D>>::value == 2);
 
-    static_assert(empty<typelist<>>::value);
-    static_assert(!empty<typelist<A>>::value);
-    static_assert(!empty<typelist<A, G>>::value);
+    STATIC_REQUIRE(empty<typelist<>>::value);
+    STATIC_REQUIRE(!empty<typelist<A>>::value);
+    STATIC_REQUIRE(!empty<typelist<A, G>>::value);
 
     check_same<last<typelist<>>::list, typelist<>>();
     check_same<last<typelist<A>>::list, typelist<A>>();
@@ -163,18 +163,18 @@ TEST_CASE("Typelist static assertions") {
                         std::uint32_t,
                         std::uint16_t>>();
 
-    static_assert(count<A, typelist<A, B, C, A, E>>::value == 2);
-    static_assert(count<A, typelist<B, B, C, F, E>>::value == 0);
-    static_assert(count<A, typelist<>>::value == 0);
+    STATIC_REQUIRE(count<A, typelist<A, B, C, A, E>>::value == 2);
+    STATIC_REQUIRE(count<A, typelist<B, B, C, F, E>>::value == 0);
+    STATIC_REQUIRE(count<A, typelist<>>::value == 0);
 
-    static_assert(count_if<std::is_unsigned, typelist<>>::value == 0);
-    static_assert(count_if<std::is_unsigned,
-                           typelist<std::int32_t,
-                                    std::uint32_t,
-                                    std::int16_t,
-                                    std::uint16_t,
-                                    std::uint8_t>>::value
-                  == 3);
+    STATIC_REQUIRE(count_if<std::is_unsigned, typelist<>>::value == 0);
+    STATIC_REQUIRE(count_if<std::is_unsigned,
+                            typelist<std::int32_t,
+                                     std::uint32_t,
+                                     std::int16_t,
+                                     std::uint16_t,
+                                     std::uint8_t>>::value
+                   == 3);
 
     check_same<drop<2, typelist<A, B, C, D>>::list, typelist<C, D>>();
     check_same<drop<2>::list<typelist<A, B, C, D>>, typelist<C, D>>();
@@ -240,8 +240,8 @@ TEST_CASE("Typelist static assertions") {
                             std::uint8_t>>,
                typelist<std::int64_t>>();
 
-    static_assert(compose_predicate<std::is_integral, std::is_signed>::composed<std::int32_t>::value);
-    static_assert(!compose_predicate<std::is_integral, std::is_signed>::composed<std::uint32_t>::value);
+    STATIC_REQUIRE(compose_predicate<std::is_integral, std::is_signed>::composed<std::int32_t>::value);
+    STATIC_REQUIRE(!compose_predicate<std::is_integral, std::is_signed>::composed<std::uint32_t>::value);
 
     check_same<compose_transformation<std::underlying_type, std::make_signed>::composed<Enum>::type, std::int8_t>();
 
