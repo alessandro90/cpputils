@@ -339,3 +339,18 @@ TEST_CASE("opt test", "[unwrap_or_else]") {  // NOLINT
         REQUIRE(b == 1);
     }
 }
+
+TEST_CASE("opt test", "[to_optional]") {  // NOLINT
+
+    REQUIRE(to_optional(10) == std::optional{10});
+    STATIC_REQUIRE(std::is_same_v<decltype(to_optional(10)), std::optional<int>>);
+    {
+        auto const opt = std::optional{0};
+        auto const &opt2 = to_optional(opt);
+        REQUIRE(&opt == &opt2);
+    }
+    {
+        std::optional<int> opt{};
+        REQUIRE(to_optional(opt) == std::optional<int>{});
+    }
+}

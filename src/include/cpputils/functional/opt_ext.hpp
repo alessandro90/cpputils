@@ -3,6 +3,7 @@
 
 #include "../traits/cpputils_concepts.hpp"
 #include "../traits/is_specialization_of.hpp"
+// #include "expected.hpp"
 #include <functional>
 #include <optional>
 #include <type_traits>
@@ -71,9 +72,9 @@ namespace detail {
     template <typename F>
     struct optional_adaptor {
         F f;
-        inline constexpr auto operator()(auto &&...args) const {
+        inline constexpr decltype(auto) operator()(auto &&...args) const {
             if constexpr (std::is_invocable_v<decltype(f), decltype(args)...>) {
-                return INVKs(f, args);
+                return std::invoke(f, FWD(args)...);
             } else {
                 return optional_adaptor_closure{
                     [... args_ = FWD(args), f_ = f](an<std::optional> auto &&opt) -> decltype(auto) {
@@ -130,6 +131,22 @@ inline constexpr auto unwrap_or_else = detail::optional_adaptor{
         return std::invoke(FWD(else_));
     }};
 // clang-format on
+
+inline constexpr auto to_optional = detail::optional_adaptor{
+    [](auto &&arg) -> decltype(auto) {
+        if constexpr (is_specialization_v<decltype(arg), std::optional>) {
+            return FWD(arg);
+            // TODO: WIP
+            // } else if constexpr (is_specialization_v<decltype(arg), expected>) {
+            //     if (arg) {
+            //         return std::optional{FWD(arg).value()};
+            //     } else {
+            //         return std::optional<typename decltype(arg)::value_t>{};
+            //     }
+        } else {
+            return std::optional{FWD(arg)};
+        }
+    }};
 }  // namespace cpputils
 
 #undef FWD
