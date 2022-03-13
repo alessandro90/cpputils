@@ -27,14 +27,19 @@ public:
         using tuple_it_type = detail::tuple_iter<Containers...>;
 
     public:
-        struct sentinel {};
+        struct sentinel {
+            [[nodiscard]] constexpr bool operator==(sentinel const &) const { return true; }
 
-        using iterator_category = std::input_iterator_tag;
+            [[nodiscard]] constexpr bool operator==(iterator const &it) const {
+                return detail::check_end(it.m_tup, it.m_it_tup);
+            }
+        };
+        // using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = detail::tuple_ref<Containers...>;
         using reference = value_type;
-        using pointer = void;
+        // using pointer = void;
 
         constexpr iterator() = default;
 
@@ -51,20 +56,12 @@ public:
             return *this;
         }
 
-        // constexpr auto operator++(int) requires std::forward_iterator<> {  // NOLINT(cert-dcl21-cpp)
-        //     auto it = *this;
-        //     ++(*this);
-        //     return it;
-        // }
-
-        constexpr void operator++(int) { ++*this; }
-
-        constexpr bool operator==(iterator const &it) const {
-            return m_it_tup == it.m_it_tup;
+        constexpr void operator++(int) {
+            ++*this;
         }
 
-        constexpr bool operator==(sentinel) const {
-            return detail::check_end(m_tup, m_it_tup);
+        [[nodiscard]] constexpr bool operator==(iterator const &it) const {
+            return m_it_tup == it.m_it_tup;
         }
 
     private:
@@ -87,4 +84,8 @@ private:
 template <typename... Containers>
 zip(Containers &&...) -> zip<std::ranges::views::all_t<Containers>...>;
 }  // namespace cpputils
+
+template <typename... Containers>
+inline constexpr bool std::ranges::enable_borrowed_range<::cpputils::zip<Containers...>> = (std::ranges::enable_borrowed_range<Containers> && ...);
+
 #endif

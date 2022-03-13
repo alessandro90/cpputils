@@ -49,10 +49,15 @@ struct range_adaptor_closure : range_adaptor<Callable> {
     }
 
     template <typename T>
+    static auto deduce(T t) {
+        return range_adaptor_closure<T>{std::move(t)};
+    }
+
+    template <typename T>
     inline friend constexpr auto operator|(range_adaptor_closure<T> const &lhs, range_adaptor_closure const &rhs) {
-        return range_adaptor_closure{[lhs, rhs](std::ranges::viewable_range auto &&r) {
+        return deduce([=](std::ranges::viewable_range auto &&r) {
             return FWD(r) | lhs | rhs;
-        }};
+        });
     }
 };
 

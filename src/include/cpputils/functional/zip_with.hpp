@@ -31,14 +31,20 @@ public:
         using tuple_it_type = detail::tuple_iter<Containers...>;
 
     public:
-        struct sentinel {};
+        struct sentinel {
+            [[nodiscard]] constexpr bool operator==(sentinel const &) const { return true; }
 
-        using iterator_category = std::input_iterator_tag;
+            [[nodiscard]] constexpr bool operator==(iterator const &it) const {
+                return detail::check_end(it.m_tup, it.m_it_tup);
+            }
+        };
+        // using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = std::invoke_result_t<Func, std::ranges::range_reference_t<Containers>...>;
-        using pointer = void;
-        using reference = value_type;
+        // using pointer = void;
+        // TODO: should this be defined?
+        // using reference = value_type;
 
         constexpr iterator() = default;
 
@@ -56,20 +62,12 @@ public:
             return *this;
         }
 
-        // constexpr auto operator++(int) {  // NOLINT(cert-dcl21-cpp)
-        //     auto it = *this;
-        //     ++(*this);
-        //     return it;
-        // }
-
-        constexpr void operator++(int) { ++*this; }
-
-        constexpr bool operator==(iterator const &it) const {
-            return m_it_tup == it.m_it_tup;
+        constexpr void operator++(int) {
+            ++*this;
         }
 
-        constexpr bool operator==(sentinel) const {
-            return detail::check_end(m_tup, m_it_tup);
+        [[nodiscard]] constexpr bool operator==(iterator const &it) const {
+            return m_it_tup == it.m_it_tup;
         }
 
     private:
@@ -96,5 +94,8 @@ template <typename Func, typename... Containers>
 zip_with(Func, Containers &&...) -> zip_with<Func, std::ranges::views::all_t<Containers>...>;
 
 }  // namespace cpputils
+
+template <typename Func, typename... Containers>
+inline constexpr bool std::ranges::enable_borrowed_range<::cpputils::zip_with<Func, Containers...>> = (std::ranges::enable_borrowed_range<Containers> && ...);
 
 #endif

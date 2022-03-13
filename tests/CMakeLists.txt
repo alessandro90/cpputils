@@ -29,6 +29,8 @@ ${TEST_PATH}/zip_test.cpp
 ${TEST_PATH}/zip_with_test.cpp
 ${TEST_PATH}/tovector_test.cpp
 ${TEST_PATH}/typelist_test.cpp
+# ${TEST_PATH}/expected_test.cpp
+${TEST_PATH}/pipeable_test.cpp
 )
 
 add_executable(cpputils_test ${TEST_FILES})

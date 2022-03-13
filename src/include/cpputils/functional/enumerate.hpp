@@ -10,8 +10,21 @@
 #include <functional>
 #include <iterator>
 #include <utility>
+// TODO: iter_move? iter_swap?
+// TODO: proxy reference for post increment?
+// template <class T>
+// struct post_increment_proxy {
+// private:
+//     T cache_;
 
-
+// public:
+//     template <typename U>
+//     constexpr post_increment_proxy(U &&t)
+//         : cache_(std::forward<U>(t)) {}
+//     constexpr T const &operator*() const noexcept {
+//         return cache_;
+//     }
+// };
 namespace cpputils {
 
 template <std::ranges::input_range Range,
@@ -31,8 +44,8 @@ public:
     constexpr enumerate_view() = default;
 
     constexpr enumerate_view(Range rng, Index start)
-        : m_iter{rng}
-        , m_start{start} {}
+        : m_range{rng}
+        , m_start{std::move(start)} {}
 
     constexpr explicit enumerate_view(Range rng)
         : enumerate_view{rng, std::size_t{0U}} {}
@@ -41,12 +54,18 @@ public:
         using iter_type = std::ranges::iterator_t<Range>;
 
     public:
-        struct sentinel {};
-        using iterator_category = std::input_iterator_tag;
+        struct sentinel {
+            [[nodiscard]] constexpr bool operator==(sentinel const &) const { return true; }
+
+            [[nodiscard]] constexpr bool operator==(iterator const &it) const {
+                return it.m_iter == it.m_last;
+            }
+        };
+        // using iterator_category = std::input_iterator_tag;
         using iterator_concept = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = enumeration;
-        using pointer = void;
+        // using pointer = void;
         using reference = value_type;
 
         constexpr iterator() = default;
@@ -68,19 +87,13 @@ public:
             return *this;
         }
 
-        // constexpr auto operator++(int) {  // NOLINT(cert-dcl21-cpp)
-        //     auto it = *this;
-        //     ++(*this);
-        //     return it;
-        // }
-
-        constexpr void operator++(int) { ++*this; }
-
-        constexpr bool operator==(iterator const &it) const {
-            return m_iter == it.m_iter;
+        constexpr void operator++(int) {
+            ++*this;
         }
 
-        constexpr bool operator==(sentinel) const { return m_iter == m_last; }
+        [[nodiscard]] constexpr bool operator==(iterator const &it) const {
+            return m_iter == it.m_iter;
+        }
 
     private:
         iter_type m_iter{};
@@ -88,11 +101,11 @@ public:
         Index m_index{};
     };
 
-    constexpr auto begin() { return iterator{m_iter, m_start}; }
+    constexpr auto begin() { return iterator{m_range, m_start}; }
     constexpr auto end() { return typename iterator::sentinel{}; }
 
 private:
-    Range m_iter;
+    Range m_range;
     Index m_start;
 };
 
@@ -101,12 +114,15 @@ enumerate_view(Range &&, Index &&) -> enumerate_view<std::ranges::views::all_t<R
 
 // clang-format off
 inline constexpr auto enumerate = detail::adaptors::range_adaptor{
-    []<typename T = std::size_t>(std::ranges::input_range auto &&r, T i = std::size_t{}) {
+    []<typename T = std::size_t>(std::ranges::input_range auto &&r, T &&i = std::size_t{}) {
         return enumerate_view{std::forward<decltype(r)>(r), std::forward<decltype(i)>(i)};
     }
 };
 // clang-format on
 
 }  // namespace cpputils
+
+template <typename Range, typename Index>
+inline constexpr bool std::ranges::enable_borrowed_range<::cpputils::enumerate_view<Range, Index>> = std::ranges::enable_borrowed_range<Range>;
 
 #endif
