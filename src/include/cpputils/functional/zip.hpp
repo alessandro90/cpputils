@@ -7,6 +7,7 @@
 
 #include "../internal/iter_utils.hpp"
 
+// TODO: iterator could use an index to keep track?
 
 namespace cpputils {
 // clang-format off

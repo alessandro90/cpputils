@@ -3,7 +3,7 @@
 
 #include "../traits/cpputils_concepts.hpp"
 #include "../traits/is_specialization_of.hpp"
-// #include "expected.hpp"
+#include "expected.hpp"
 #include <functional>
 #include <optional>
 #include <type_traits>
@@ -136,13 +136,22 @@ inline constexpr auto to_optional = detail::optional_adaptor{
     [](auto &&arg) -> decltype(auto) {
         if constexpr (is_specialization_v<decltype(arg), std::optional>) {
             return FWD(arg);
-            // TODO: WIP
-            // } else if constexpr (is_specialization_v<decltype(arg), expected>) {
-            //     if (arg) {
-            //         return std::optional{FWD(arg).value()};
-            //     } else {
-            //         return std::optional<typename decltype(arg)::value_t>{};
-            //     }
+        } else if constexpr (is_specialization_v<decltype(arg), expected>) {
+            // std::optional does not support references but expected does.
+            // Fallback to reference_wrapper to this special case
+            using value_t = typename std::remove_cvref_t<decltype(arg)>::value_t;
+            using opt_t = std::conditional_t<std::is_reference_v<value_t>,
+                                             std::reference_wrapper<std::remove_reference_t<value_t>>,
+                                             value_t>;
+            if (arg) {
+                if constexpr (std::is_reference_v<value_t>) {
+                    return std::optional<opt_t>{std::reference_wrapper{FWD(arg).value()}};
+                } else {
+                    return std::optional<opt_t>{FWD(arg).value()};
+                }
+            } else {
+                return std::optional<opt_t>{};
+            }
         } else {
             return std::optional{FWD(arg)};
         }
