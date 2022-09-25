@@ -287,6 +287,22 @@ static_assert(tl::specializable<std::tuple, int, char>); // success
 static_assert(tl::specializable<std::optional, int, char>); // fail
 ```
 
+## [Shortcuts for simple functions](src/include/cpputils/functional/operator_sections.hpp)
+
+The symbol `_` is a compile-time static object which allow to build function objects in a terse way. For example (perfect forwarding is omitted for simplicity)
+
+```cpp
+using cpputils::_;
+
+_ * _     // [](auto lhs, auto rhs) { return lhs * rhs; }
+_ / 3     // [](auto lhs) { return lhs / 3; }
+-_        // [](auto x) { return -x; }
+0b010 & _ // [](auto x) { return 0b010 & x; }
+_ > 100   // [](auto x) { return x > 100; }
+```
+
+And so on..
+
 ## Details
 
 The tests are downloaded automatically in the build folder and are the only buildable thing. So doing `make` will build them. All typelist tests are compile-time checks, so if a test fail you get a compile-time error.
