@@ -8,6 +8,8 @@ on:
     paths-ignore:
       - '**/*.md'
       - '**/LICENSE'
+      - '**/.clang-*'
+      - '**/.gitignore'
 
 jobs:
   Test:
