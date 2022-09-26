@@ -10,11 +10,13 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define WILDCARD_PARTIAL_FUNCTION(op)                                                \
     [[nodiscard]] friend constexpr auto operator op(wildcard, auto &&rhs) noexcept { \
-        return [rhs_ = FWD(rhs)](auto &&lhs) { return FWD(lhs) op rhs_; };           \
+        return [rhs_ = FWD(rhs)](auto &&lhs) requires requires { lhs op FWD(rhs); }  \
+        { return FWD(lhs) op rhs_; };                                                \
     }                                                                                \
                                                                                      \
     [[nodiscard]] friend constexpr auto operator op(auto &&lhs, wildcard) noexcept { \
-        return [lhs_ = FWD(lhs)](auto &&rhs) { return lhs_ op FWD(rhs); };           \
+        return [lhs_ = FWD(lhs)](auto &&rhs) requires requires { lhs op FWD(rhs); }  \
+        { return lhs_ op FWD(rhs); };                                                \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
