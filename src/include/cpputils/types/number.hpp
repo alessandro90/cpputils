@@ -114,6 +114,7 @@ namespace detail {
 
     template <std::signed_integral I>
     constexpr bool is_error_result_mul(I lhs, I rhs) noexcept {
+        if (rhs == -1) { return lhs <= MIN_N(I); }
         if (rhs == 0 || lhs == 0) { return false; }
         if (lhs > 0 && rhs > 0) { return lhs > MAX_N(I) / rhs; }
         if (lhs < 0 && rhs < 0) { return lhs < MAX_N(I) / rhs; }
