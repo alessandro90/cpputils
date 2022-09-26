@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10.0)
+cmake_minimum_required (VERSION 3.14.0)
 
 set(CPPUTILS_ENABLE_COVERAGE FALSE CACHE BOOL "Enable coverage")
 if (CPPUTILS_ENABLE_COVERAGE)

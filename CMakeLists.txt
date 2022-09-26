@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10.0)
+cmake_minimum_required (VERSION 3.14.0)
 
 project(CppUtils)
 
@@ -28,7 +28,9 @@ if(BUILDING_MULTI_CONFIG)
   endif()
 endif()
 
-if (CPPUTILS_ENABLE_TESTING)
-  enable_testing()
-  add_subdirectory(tests)
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+  if (CPPUTILS_ENABLE_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+  endif()
 endif()
