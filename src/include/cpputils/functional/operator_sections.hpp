@@ -1,8 +1,11 @@
 #ifndef CPPUTILS_OPERATOR_SECTIONS_HPP
 #define CPPUTILS_OPERATOR_SECTIONS_HPP
 
+#include <concepts>
 #include <functional>
+#include <type_traits>
 #include <utility>
+
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define FWD(x) std::forward<decltype(x)>(x)
@@ -76,6 +79,13 @@ namespace detail {
         WILDCARD_PARTIAL_FUNCTION(&)
         WILDCARD_PARTIAL_FUNCTION(|)
         WILDCARD_PARTIAL_FUNCTION(^)
+
+        constexpr auto fn(auto &&f) const noexcept {
+            return [f_ = FWD(f)](auto &&obj) -> decltype(auto) requires std::invocable<std::remove_reference_t<decltype(f)>, decltype(obj)>
+            {
+                return std::invoke(f_, FWD(obj));
+            };
+        }
     };
 }  // namespace detail
 

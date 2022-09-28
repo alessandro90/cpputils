@@ -3,6 +3,13 @@
 
 using cpputils::_;  // NOLINT
 
+
+namespace {
+struct Obj {
+    int get() const { return 42; }
+};
+}  // namespace
+
 // NOLINTNEXTLINE
 TEST_CASE("sections test", "") {
     SECTION("operator +") {
@@ -288,5 +295,9 @@ TEST_CASE("sections test", "") {
             auto const three_xor = 3U ^ _;
             REQUIRE(three_xor(2U) == (3U ^ 2U));
         }
+    }
+    SECTION("fn") {
+        auto const getter = _.fn(Obj::get);
+        REQUIRE(getter(Obj{}) == Obj{}.get());
     }
 }
