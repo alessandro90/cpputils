@@ -94,4 +94,15 @@ TabWidth: 4
 UseTab: Never
 AlwaysBreakTemplateDeclarations: true
 RequiresClausePosition: WithPreceding
-IndentRequiresClause: false
+IndentRequiresClause: true
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterForeachMacros: false
+  AfterFunctionDeclarationName: false
+  AfterFunctionDefinitionName: false
+  AfterIfMacros: true
+  AfterOverloadedOperator: false
+  AfterRequiresInClause: true
+  AfterRequiresInExpression: true
+  BeforeNonEmptyParentheses: false
