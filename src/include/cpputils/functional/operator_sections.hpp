@@ -78,10 +78,13 @@ concept object_method_call = std::is_class_v<std::decay_t<Obj>> && std::is_membe
             return std::invoke(w.f, lhs) op rhs;                                                                           \
         };                                                                                                                 \
     }                                                                                                                      \
+                                                                                                                           \
     template <typename F>                                                                                                  \
     [[nodiscard]] constexpr auto operator op(not_wildcard auto const &lhs, wildcard_callable<F> const &w) noexcept {       \
         return [w, lhs](auto const &rhs) -> decltype(auto) requires requires { lhs op std::invoke(w.f, rhs); }             \
-        { return lhs op std::invoke(w.f, rhs); };                                                                          \
+        {                                                                                                                  \
+            return lhs op std::invoke(w.f, rhs);                                                                           \
+        };                                                                                                                 \
     }                                                                                                                      \
                                                                                                                            \
     template <typename F>                                                                                                  \
@@ -115,26 +118,26 @@ concept object_method_call = std::is_class_v<std::decay_t<Obj>> && std::is_membe
     inline constexpr auto op_name = [](auto const &lhs, auto const &rhs) -> decltype(auto) requires requires { lhs op rhs; } \
     {                                                                                                                        \
         return lhs op rhs;                                                                                                   \
-    };
+    }
 
 namespace cpputils {
 
-DEFINE_BINARY_OPERATOR(multiplies, *)
-DEFINE_BINARY_OPERATOR(divides, /)
-DEFINE_BINARY_OPERATOR(plus, +)
-DEFINE_BINARY_OPERATOR(minus, -)
-DEFINE_BINARY_OPERATOR(modulus, %)
-DEFINE_BINARY_OPERATOR(equal_to, ==)
-DEFINE_BINARY_OPERATOR(not_equal_to, !=)
-DEFINE_BINARY_OPERATOR(greater, >)
-DEFINE_BINARY_OPERATOR(less, <)
-DEFINE_BINARY_OPERATOR(greater_equal, >=)
-DEFINE_BINARY_OPERATOR(less_equal, <=)
-DEFINE_BINARY_OPERATOR(logical_and, &&)
-DEFINE_BINARY_OPERATOR(logical_or, ||)
-DEFINE_BINARY_OPERATOR(bit_and, &)
-DEFINE_BINARY_OPERATOR(bit_or, |)
-DEFINE_BINARY_OPERATOR(bit_xor, ^)
+DEFINE_BINARY_OPERATOR(multiplies, *);
+DEFINE_BINARY_OPERATOR(divides, /);
+DEFINE_BINARY_OPERATOR(plus, +);
+DEFINE_BINARY_OPERATOR(minus, -);
+DEFINE_BINARY_OPERATOR(modulus, %);
+DEFINE_BINARY_OPERATOR(equal_to, ==);
+DEFINE_BINARY_OPERATOR(not_equal_to, !=);
+DEFINE_BINARY_OPERATOR(greater, >);
+DEFINE_BINARY_OPERATOR(less, <);
+DEFINE_BINARY_OPERATOR(greater_equal, >=);
+DEFINE_BINARY_OPERATOR(less_equal, <=);
+DEFINE_BINARY_OPERATOR(logical_and, &&);
+DEFINE_BINARY_OPERATOR(logical_or, ||);
+DEFINE_BINARY_OPERATOR(bit_and, &);
+DEFINE_BINARY_OPERATOR(bit_or, |);
+DEFINE_BINARY_OPERATOR(bit_xor, ^);
 
 namespace detail {
     template <typename Func>
@@ -212,18 +215,17 @@ namespace detail {
         WILDCARD_BINARY_FUNCTION(|, bit_or)
         WILDCARD_BINARY_FUNCTION(^, bit_xor)
         WILDCARD_UNARY_FUNCTION(~, std::bit_not<>{})
-
         // clang-format off
         constexpr auto fn(auto &&f) const noexcept {
             return wildcard_callable{
-                [f_ = FWD(f)](auto const &obj) -> decltype(auto) requires std::invocable<std::remove_cvref_t<decltype(f)>, decltype(obj)> {
+                [f_ = FWD(f)](auto const &obj) -> decltype(auto) requires std::invocable<std::remove_cvref_t<decltype(f)>, decltype(obj)>
+                {
                     return std::invoke(f_, obj);
                 }
             };
-    // clang-format on
-}  // namespace detail
-};  // namespace cpputils
-
+        }
+    };
+// clang-format on
 WILDCARD_PARTIAL_FUNCTION(*)
 WILDCARD_PARTIAL_FUNCTION(/)
 WILDCARD_PARTIAL_FUNCTION(+)
