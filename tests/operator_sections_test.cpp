@@ -331,9 +331,16 @@ TEST_CASE("sections test", "") {
         }
     }
     SECTION("fn and wildcard chained") {
-        auto const square_greater_than = _.fn(&Obj::square).fn(&Obj::get) > _;
-        REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
-        REQUIRE(square_greater_than(Obj{3}, 4));
+        {
+            auto const square_greater_than = _.fn(&Obj::square).fn(&Obj::get) > _;
+            REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
+            REQUIRE(square_greater_than(Obj{3}, 4));
+        }
+        {
+            auto const square_greater_than = _.fn(&Obj::square, &Obj::get) > _;
+            REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
+            REQUIRE(square_greater_than(Obj{3}, 4));
+        }
     }
     SECTION("fn and wildcard macros") {
         {

@@ -329,6 +329,8 @@ struct Obj {
 };
 
 _.fn(&Obj::square).fn(&Obj::get) > _; // [](Obj const &obj, auto const &v) { return obj.square().get() > v; }
+// Variadic packs of functions are supported
+_.fn(&Obj::square, &Obj::get) > _; // [](Obj const &obj, auto const &v) { return obj.square().get() > v; }
 ```
 
 If you don't know the type of the incoming value but know that it has a given member or member function you can either pass a generic lambda to `fn` or you can use one of three macros. Since macros are evil ([reason #1](https://isocpp.org/wiki/faq/inline-functions#inline-vs-macros), [reason #2](https://isocpp.org/wiki/faq/misc-technical-issues#macros-with-if), [reason #3](https://isocpp.org/wiki/faq/misc-technical-issues#macros-with-multi-stmts), [reason #4](https://isocpp.org/wiki/faq/misc-technical-issues#macros-with-token-pasting)) in order to use them you must `#define CPPUTILS_ENABLE_CALL_MACROS` before the `include`.

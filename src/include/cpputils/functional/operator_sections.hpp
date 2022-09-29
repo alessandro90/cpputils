@@ -1,10 +1,12 @@
 #ifndef CPPUTILS_OPERATOR_SECTIONS_HPP
 #define CPPUTILS_OPERATOR_SECTIONS_HPP
 
+#include "composition.hpp"
 #include <concepts>
 #include <functional>
 #include <type_traits>
 #include <utility>
+
 
 namespace cpputils::detail {
 template <typename Func>
@@ -187,6 +189,15 @@ namespace detail {
 #pragma GCC diagnostic pop
             });
         }
+
+        [[nodiscard]] constexpr auto fn(auto &&...fs) const noexcept requires (sizeof...(fs) > 1) {
+            return make([...fs_ = FWD(fs), *this](auto const &obj) requires requires { std::invoke(compose_left(fs...), std::invoke(f, obj)); } {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+                return std::invoke(compose_left(fs_...), std::invoke(f, obj));
+#pragma GCC diagnostic pop
+            });
+        }
         // clang-format on
 
     private:
@@ -222,8 +233,17 @@ namespace detail {
         WILDCARD_BINARY_FUNCTION(^, bit_xor)
         WILDCARD_UNARY_FUNCTION(~, std::bit_not<>{})
 
-        constexpr auto fn(auto &&f) const noexcept {
+        [[nodiscard]] constexpr auto fn(auto &&f) const noexcept {
             return wildcard_callable{FWD(f)};
+        }
+        // clang-format off
+        [[nodiscard]] constexpr auto fn(auto &&...fs) const noexcept requires (sizeof...(fs) > 1) {
+            return wildcard_callable{[...fs_ = FWD(fs)](auto const &obj) requires requires { std::invoke(compose_left(fs...), obj); } {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+                return std::invoke(compose_left(fs_...), obj);
+#pragma GCC diagnostic pop
+            }};
         }
     };
 
@@ -268,6 +288,7 @@ namespace detail {
     WILDCARD_CALLABLE_PARTIAL_FUNCTION(|)
     WILDCARD_CALLABLE_PARTIAL_FUNCTION(^)
 }  // namespace detail
+   // clang-format on
 
 #ifdef CPPUTILS_ENABLE_CALL_MACROS
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
