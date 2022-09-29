@@ -344,10 +344,10 @@ _.fn(CALL(square)).fn(CALL(get)) > _; // [](auto const &obj, auto const &v) { re
 // If you need to pass arguments to the function pointer
 auto const x = 10;
 // By copy capture
-_.fn(CALL_C(mult, x)).fn(CALL(get)) > 0; // [x](auto const &obj) { return obj.mult(x).get() > 0; }
+_.fn(CALL_C(mult, x)) > 0; // [x](auto const &obj) { return obj.mult(x) > 0; }
 
 // By reference capture
-_.fn(CALL_R(mult, x)).fn(CALL(get)) > 0; // [&x](auto const &obj) { return obj.mult(x).get() > 0; }
+_.fn(CALL_R(mult, x)) > 0; // [&x](auto const &obj) { return obj.mult(x) > 0; }
 
 ```
 
