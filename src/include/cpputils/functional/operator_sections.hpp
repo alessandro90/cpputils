@@ -268,24 +268,24 @@ WILDCARD_CALLABLE_PARTIAL_FUNCTION(^)
 
 #ifdef CPPULTILS_ENABLE_CALL_MACROS
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CALL(f)                                                                                                                                                                                                     \
-    [](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(std::decay_t<decltype(obj)>::f, obj); } \
-    {                                                                                                                                                                                                               \
-        return std::invoke(std::decay_t<decltype(obj)>::f, obj);                                                                                                                                                    \
+#define CALL(f)                                                                                                                                                                                                      \
+    [](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj); } \
+    {                                                                                                                                                                                                                \
+        return std::invoke(&std::decay_t<decltype(obj)>::f, obj);                                                                                                                                                    \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CALL_C(f, ...)                                                                                                                                                                                                            \
-    [=](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
-    {                                                                                                                                                                                                                             \
-        return std::invoke(std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                     \
+#define CALL_C(f, ...)                                                                                                                                                                                                             \
+    [=](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
+    {                                                                                                                                                                                                                              \
+        return std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                     \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CALL_R(f, ...)                                                                                                                                                                                                            \
-    [&](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
-    {                                                                                                                                                                                                                             \
-        return std::invoke(std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                     \
+#define CALL_R(f, ...)                                                                                                                                                                                                             \
+    [&](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
+    {                                                                                                                                                                                                                              \
+        return std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                     \
     }
 #endif
 
