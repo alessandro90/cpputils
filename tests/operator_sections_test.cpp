@@ -6,7 +6,8 @@ using cpputils::_;  // NOLINT
 
 namespace {
 struct Obj {
-    int get() const { return 42; }
+    int get() const { return v; }
+    int v{42};
 };
 }  // namespace
 
@@ -299,5 +300,27 @@ TEST_CASE("sections test", "") {
     SECTION("fn") {
         auto const getter = _.fn(Obj::get);
         REQUIRE(getter(Obj{}) == Obj{}.get());
+    }
+    SECTION("fn and wildcard") {
+        {
+            auto const greater_than_40 = _.fn(Obj::get) > 40;
+            REQUIRE(greater_than_40(Obj{}));
+        }
+        {
+            auto const equal_40 = _.fn(Obj::get) == Obj{}.get();
+            REQUIRE(equal_40(Obj{}));
+        }
+        {
+            auto const less_than_40 = _.fn(Obj::get) < 40;
+            REQUIRE_FALSE(less_than_40(Obj{}));
+        }
+        {
+            auto const is_greater = _.fn(Obj::get) > _.fn(Obj::get);
+            REQUIRE(is_greater(Obj{10}, Obj{1}));
+        }
+        {
+            auto const is_greater = _.fn(Obj::get) > _;
+            REQUIRE(is_greater(Obj{10}, 1));
+        }
     }
 }
