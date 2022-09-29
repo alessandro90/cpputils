@@ -19,7 +19,7 @@ struct Obj {
 }  // namespace
 
 // NOLINTNEXTLINE
-TEST_CASE("sections test", "") {
+TEST_CASE("sections test", "[test terse syntax for lambda functions]") {
     SECTION("operator +") {
         auto const sum = _ + _;
         REQUIRE(sum(1, 2) == 3);
