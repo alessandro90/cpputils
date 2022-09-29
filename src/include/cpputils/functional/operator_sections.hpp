@@ -32,7 +32,7 @@ concept not_wildcard = !is_wildcard<T>::value && !is_wildcard_callable<T>::value
 // clang-format on
 
 template <typename Obj, typename F>
-concept object_method_call = std::is_class_v<std::decay_t<Obj>> && std::is_member_pointer_v<F>;
+concept object_member_call = std::is_class_v<std::decay_t<Obj>> && std::is_member_pointer_v<F>;
 
 template <typename Obj, typename F>
 concept object_member_function_call = std::is_class_v<std::decay_t<Obj>> && std::is_member_function_pointer_v<F>;
@@ -293,7 +293,7 @@ namespace detail {
 #ifdef CPPUTILS_ENABLE_CALL_MACROS
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CALL(f)                                                                                                                                                                                                      \
-    [](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj); } \
+    [](auto const &obj) -> decltype(auto) requires cpputils::detail::object_member_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj); } \
     {                                                                                                                                                                                                                \
         return std::invoke(&std::decay_t<decltype(obj)>::f, obj);                                                                                                                                                    \
     }
