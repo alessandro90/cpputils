@@ -303,6 +303,15 @@ _ > 100   // [](auto x) { return x > 100; }
 
 And so on..
 
+It works also with projections
+
+```cpp
+using cpputils::_;
+
+_.fn(&std::string::size) > 10U // [](std::string const &s) { return s.size() > 10U; }
+_.fn(&std::string::size) == _ // [](std::string const &s, auto len) { return s.size() == len; }
+```
+
 ## Details
 
 The tests are downloaded automatically in the build folder and are the only buildable thing. So doing `make` will build them. All typelist tests are compile-time checks, so if a test fail you get a compile-time error.
