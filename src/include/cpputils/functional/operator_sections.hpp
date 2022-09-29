@@ -191,10 +191,10 @@ namespace detail {
         }
 
         [[nodiscard]] constexpr auto fn(auto &&...fs) const noexcept requires (sizeof...(fs) > 1) {
-            return make([...fs_ = FWD(fs), *this](auto const &obj) requires requires { std::invoke(compose_left(fs...), std::invoke(f, obj)); } {
+            return make([fs_ = compose_left(FWD(fs)...), *this](auto const &obj) requires requires { std::invoke(compose_left(fs...), std::invoke(f, obj)); } {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
-                return std::invoke(compose_left(fs_...), std::invoke(f, obj));
+                return std::invoke(fs_, std::invoke(f, obj));
 #pragma GCC diagnostic pop
             });
         }
@@ -238,10 +238,10 @@ namespace detail {
         }
         // clang-format off
         [[nodiscard]] constexpr auto fn(auto &&...fs) const noexcept requires (sizeof...(fs) > 1) {
-            return wildcard_callable{[...fs_ = FWD(fs)](auto const &obj) requires requires { std::invoke(compose_left(fs...), obj); } {
+            return wildcard_callable{[fs_ =compose_left(FWD(fs)...)](auto const &obj) requires requires { std::invoke(compose_left(fs...), obj); } {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
-                return std::invoke(compose_left(fs_...), obj);
+                return std::invoke(compose_left(fs_), obj);
 #pragma GCC diagnostic pop
             }};
         }
