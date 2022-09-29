@@ -289,16 +289,16 @@ static_assert(tl::specializable<std::optional, int, char>); // fail
 
 ## [Shortcuts for simple functions](src/include/cpputils/functional/operator_sections.hpp)
 
-The symbol `_` is a compile-time static object which allow to build function objects in a terse way. For example (perfect forwarding is omitted for simplicity)
+The symbol `_` is a compile-time static object which allow to build function objects in a terse way. For example
 
 ```cpp
 using cpputils::_;
 
 _ * _     // [](auto lhs, auto rhs) { return lhs * rhs; }
-_ / 3     // [](auto lhs) { return lhs / 3; }
--_        // [](auto x) { return -x; }
-0b010 & _ // [](auto x) { return 0b010 & x; }
-_ > 100   // [](auto x) { return x > 100; }
+_ / 3     // [](auto const &lhs) { return lhs / 3; }
+-_        // [](auto const &x) { return -x; }
+0b010 & _ // [](auto const &x) { return 0b010 & x; }
+_ > 100   // [](auto const &x) { return x > 100; }
 ```
 
 And so on..
@@ -309,7 +309,46 @@ It works also with projections
 using cpputils::_;
 
 _.fn(&std::string::size) > 10U // [](std::string const &s) { return s.size() > 10U; }
-_.fn(&std::string::size) == _ // [](std::string const &s, auto len) { return s.size() == len; }
+_.fn(&std::string::size) == _ // [](std::string const &s, auto const &len) { return s.size() == len; }
+```
+
+It is possible to chain multiple method calls
+
+```cpp
+using cpputils::_;
+
+struct Obj {
+    [[nodiscard]] int get() const { return v; }
+    [[nodiscard]] Obj square() const {
+        return Obj{v * v};
+    }
+    [[nodiscard]] int mult(int m) const {
+        return v * m;
+    }
+    int v{42};
+};
+
+_.fn(&Obj::square).fn(&Obj::get) > _; // [](Obj const &obj, auto const &v) { return obj.square().get() > v; }
+```
+
+If you don't know the type of the incoming value but know that it has a given member or member function you can either pass a generic lambda to `fn` or you can use one of three macros. Since macros are evil ([reason #1](https://isocpp.org/wiki/faq/inline-functions#inline-vs-macros), [reason #2](https://isocpp.org/wiki/faq/misc-technical-issues#macros-with-if), [reason #3](https://isocpp.org/wiki/faq/misc-technical-issues#macros-with-multi-stmts), [reason #4](https://isocpp.org/wiki/faq/misc-technical-issues#macros-with-token-pasting)) in order to use them you must `#define CPPULTILS_ENABLE_CALL_MACROS` before the `include`.
+
+```cpp
+#define CPPULTILS_ENABLE_CALL_MACROS
+#include "cpputils/functional/operator_sections.hpp"
+
+using cpputils::_;
+
+_.fn(CALL(square)).fn(CALL(get)) > _; // [](auto const &obj, auto const &v) { return obj.square().get() > v; }
+
+// If you need to pass arguments to the function pointer
+auto const x = 10;
+// By copy capture
+_.fn(CALL_C(mult, x)).fn(CALL(get)) > 0; // [x](auto const &obj) { return obj.mult(x).get() > 0; }
+
+// By reference capture
+_.fn(CALL_R(mult, x)).fn(CALL(get)) > 0; // [&x](auto const &obj) { return obj.mult(x).get() > 0; }
+
 ```
 
 ## Details

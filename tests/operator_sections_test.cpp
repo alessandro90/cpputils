@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#define CPPULTILS_ENABLE_CALL_MACROS
 #include "cpputils/functional/operator_sections.hpp"
 
 using cpputils::_;  // NOLINT
@@ -6,7 +7,13 @@ using cpputils::_;  // NOLINT
 
 namespace {
 struct Obj {
-    int get() const { return v; }
+    [[nodiscard]] int get() const { return v; }
+    [[nodiscard]] Obj square() const {
+        return Obj{v * v};
+    }
+    [[nodiscard]] int mult(int m) const {
+        return v * m;
+    }
     int v{42};
 };
 }  // namespace
@@ -307,8 +314,8 @@ TEST_CASE("sections test", "") {
             REQUIRE(greater_than_40(Obj{}));
         }
         {
-            auto const equal_40 = _.fn(&Obj::get) == Obj{}.get();
-            REQUIRE(equal_40(Obj{}));
+            auto const equal = _.fn(&Obj::get) == Obj{}.get();
+            REQUIRE(equal(Obj{}));
         }
         {
             auto const less_than_40 = _.fn(&Obj::get) < 40;
@@ -321,6 +328,30 @@ TEST_CASE("sections test", "") {
         {
             auto const is_greater = _.fn(&Obj::get) > _;
             REQUIRE(is_greater(Obj{10}, 1));
+        }
+    }
+    SECTION("fn and wildcard chained") {
+        auto const square_greater_than = _.fn(&Obj::square).fn(&Obj::get) > _;
+        REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
+        REQUIRE(square_greater_than(Obj{3}, 4));
+    }
+    SECTION("fn and wildcard macros") {
+        {
+            auto const value_greater_than = _.fn(CALL(get)) > _;
+            REQUIRE_FALSE(value_greater_than(Obj{1}, 4));
+            REQUIRE(value_greater_than(Obj{5}, 4));
+        }
+        {
+            auto const x = 2;
+            auto const equal = _.fn(CALL_C(mult, x)) == _;
+            REQUIRE_FALSE(equal(Obj{1}, 3));
+            REQUIRE(equal(Obj{2}, 4));
+        }
+        {
+            auto const x = 2;
+            auto const equal = _.fn(CALL_R(mult, x)) == _;
+            REQUIRE_FALSE(equal(Obj{1}, 3));
+            REQUIRE(equal(Obj{2}, 4));
         }
     }
 }
