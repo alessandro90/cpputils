@@ -268,7 +268,7 @@ WILDCARD_CALLABLE_PARTIAL_FUNCTION(|)
 WILDCARD_CALLABLE_PARTIAL_FUNCTION(^)
 }  // namespace detail
 
-#ifdef CPPULTILS_ENABLE_CALL_MACROS
+#ifdef CPPUTILS_ENABLE_CALL_MACROS
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CALL(f)                                                                                                                                                                                                      \
     [](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj); } \

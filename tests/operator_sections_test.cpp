@@ -1,5 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
-#define CPPULTILS_ENABLE_CALL_MACROS
+#define CPPUTILS_ENABLE_CALL_MACROS
 #include "cpputils/functional/operator_sections.hpp"
 
 using cpputils::_;  // NOLINT
