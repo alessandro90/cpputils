@@ -31,6 +31,9 @@ concept not_wildcard = !is_wildcard<T>::value && !is_wildcard_callable<T>::value
 
 template <typename Obj, typename F>
 concept object_method_call = std::is_class_v<std::decay_t<Obj>> && std::is_member_pointer_v<F>;
+
+template <typename Obj, typename F>
+concept object_member_function_call = std::is_class_v<std::decay_t<Obj>> && std::is_member_function_pointer_v<F>;
 }  // namespace cpputils::detail
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -277,17 +280,17 @@ WILDCARD_CALLABLE_PARTIAL_FUNCTION(^)
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CALL_C(f, ...)                                                                                                                                                                                                             \
-    [=](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
-    {                                                                                                                                                                                                                              \
-        return std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                     \
+#define CALL_C(f, ...)                                                                                                                                                                                                                      \
+    [=](auto const &obj) -> decltype(auto) requires cpputils::detail::object_member_function_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
+    {                                                                                                                                                                                                                                       \
+        return std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                              \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CALL_R(f, ...)                                                                                                                                                                                                             \
-    [&](auto const &obj) -> decltype(auto) requires cpputils::detail::object_method_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
-    {                                                                                                                                                                                                                              \
-        return std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                     \
+#define CALL_R(f, ...)                                                                                                                                                                                                                      \
+    [&](auto const &obj) -> decltype(auto) requires cpputils::detail::object_member_function_call<decltype(obj), decltype(&std::decay_t<decltype(obj)>::f)> && requires { std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__); } \
+    {                                                                                                                                                                                                                                       \
+        return std::invoke(&std::decay_t<decltype(obj)>::f, obj, __VA_ARGS__);                                                                                                                                                              \
     }
 #endif
 
