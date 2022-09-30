@@ -144,6 +144,11 @@ DEFINE_BINARY_OPERATOR(bit_and, &);
 DEFINE_BINARY_OPERATOR(bit_or, |);
 DEFINE_BINARY_OPERATOR(bit_xor, ^);
 
+inline constexpr auto unary_plus = [](auto const &obj) -> decltype(auto) requires requires { +obj; }
+{
+    return +obj;
+};
+
 namespace detail {
     template <typename Func>
     struct wildcard_callable {
@@ -155,6 +160,7 @@ namespace detail {
         WILDCARD_CALLABLE_BINARY_FUNCTION(-, minus)
         WILDCARD_CALLABLE_BINARY_FUNCTION(%, modulus)
         WILDCARD_CALLABLE_UNARY_FUNCTION(-, std::negate<>{})
+        WILDCARD_CALLABLE_UNARY_FUNCTION(+, unary_plus)
 
 
         WILDCARD_CALLABLE_BINARY_FUNCTION(==, equal_to)
@@ -205,6 +211,9 @@ namespace detail {
             return wildcard_callable<std::remove_cvref_t<decltype(g)>>{FWD(g)};
         }
     };
+    // NOTE: probably useless since C++20
+    template <typename T>
+    wildcard_callable(T) -> wildcard_callable<T>;
 
     struct wildcard {
         WILDCARD_BINARY_FUNCTION(*, multiplies)
@@ -213,6 +222,7 @@ namespace detail {
         WILDCARD_BINARY_FUNCTION(-, minus)
         WILDCARD_BINARY_FUNCTION(%, modulus)
         WILDCARD_UNARY_FUNCTION(-, std::negate<>{})
+        WILDCARD_UNARY_FUNCTION(+, unary_plus)
 
 
         WILDCARD_BINARY_FUNCTION(==, equal_to)
@@ -233,10 +243,17 @@ namespace detail {
         WILDCARD_BINARY_FUNCTION(^, bit_xor)
         WILDCARD_UNARY_FUNCTION(~, std::bit_not<>{})
 
+        // clang-format off
+        [[nodiscard]] constexpr auto args(auto &&...xs) const noexcept { // NOLINT(readability-convert-member-functions-to-static)
+            return wildcard_callable{[...xs_ = FWD(xs)]<typename Obj>(Obj const &obj) -> decltype(auto) requires std::invocable<Obj const &, std::remove_cvref_t<decltype(xs)>...> {
+                return std::invoke(obj, xs_...);
+            }};
+        }
+
         [[nodiscard]] constexpr auto fn(auto &&f) const noexcept {
             return wildcard_callable{FWD(f)};
         }
-        // clang-format off
+
         [[nodiscard]] constexpr auto fn(auto &&...fs) const noexcept requires (sizeof...(fs) > 1) {
             return wildcard_callable{[fs_ =compose_left(FWD(fs)...)](auto const &obj) requires requires { std::invoke(compose_left(fs...), obj); } {
 #pragma GCC diagnostic push

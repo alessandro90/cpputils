@@ -14,6 +14,9 @@ struct Obj {
     [[nodiscard]] int mult(int m) const {
         return v * m;
     }
+    [[nodiscard]] int operator()(int j) const {
+        return v + j;
+    }
     int v{42};
 };
 }  // namespace
@@ -52,6 +55,10 @@ TEST_CASE("sections test", "[test terse syntax for lambda functions]") {
     SECTION("Unary minus") {
         auto const negate = -_;
         REQUIRE(negate(1) == -1);
+    }
+    SECTION("Unary plus") {
+        auto const do_plus = +_;
+        REQUIRE(do_plus('a') == (+'a'));
     }
     ///
     SECTION("operator *") {
@@ -359,6 +366,13 @@ TEST_CASE("sections test", "[test terse syntax for lambda functions]") {
             auto const equal = _.fn(CALL_R(mult, x)) == _;
             REQUIRE_FALSE(equal(Obj{1}, 3));
             REQUIRE(equal(Obj{2}, 4));
+        }
+    }
+    SECTION("fn and wildcard callable") {
+        {
+            auto const sum_10_equal_to = _.args(10) == _;
+            REQUIRE_FALSE(sum_10_equal_to(Obj{1}, 10));
+            REQUIRE(sum_10_equal_to(Obj{1}, 11));
         }
     }
 }
