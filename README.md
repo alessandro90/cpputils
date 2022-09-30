@@ -364,7 +364,7 @@ struct Callable {
     int operator()(int y) const { return x + y; }
 };
 
-_.args(x) // [x](auto const &obj) { return obj(x); }
+_.args(x) > _ // [x](auto const &obj, auto const v) { return obj(x) > v; }
 ```
 
 ## [Container views](src/include/cpputils/misc/container_views.hpp)
