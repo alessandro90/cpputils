@@ -404,6 +404,63 @@ auto const a = std::array{1, 2, 3};
 auto const v = as_view<with_fixed_extent>(a); // -> std::span<int const, 3> const
 ```
 
+## [Lazy object creation](src/include/cpputils/types/lazy.hpp)
+
+Two different implementations are provided.
+
+### Lambda implementation
+
+A variable template that is also a lambda. The implementation is really lightweight but being the type of the lambda unique one cannot pass around such variables without using templates.
+
+```cpp
+using namespace cpputils;
+
+auto const lz = lazy<ComplexObject>(arg_0, arg_1, arg_2); // Nothing is created here, just a lambda with a captured variadic pack
+auto const obj = lz(); // This is a ComplexObject{arg_0, arg_1, arg_2};
+```
+
+### Class implementation
+
+A more involved implementation that allow the use of custom builders (second template parameter).
+
+```cpp
+Lazy<ComplexObject, ComplexObjectBuilder> const lz{arg_0, arg_1, arg_2}; // An object of type Lazy<_, _> is created togheter with a ComplexObjectBuilder.
+auto const obj = lz(); // This is a ComplexObject{arg_0, arg_1, arg_2};
+```
+
+The requirements for a builder for an object of type `TargetObject` are:
+
+- Can be constructed with a lambda with signature `[...]() -> TargetObject`;
+- Has an `operator()() -> TargetObject`.
+
+The default builder (used if the second template parameter is not specified) is `std::function<TargetObject()>`.
+
+A custom builder could be for example:
+
+```cpp
+template<typename TargetObject>
+struct Builder {
+    template <template B>
+    explicit Builder(B const &b)
+        : internal_builder{b}
+        , builder{[](std::any const *bld) {
+            return (*std::any_cast<B>(bld))(); 
+        }} 
+    {}
+
+    TargetObject operator()() const { return builder(&internal_builder); }
+
+    std::any internal_builder;
+    TargetObject (*builder)(std::any const *);
+};
+```
+
+`Lazy` can be than defined as:
+
+```cpp
+using LazyComplexObject = Lazy<ComplexObject, Builder<ComplexObject>>;
+```
+
 ## Details
 
 The tests are downloaded automatically in the build folder and are the only buildable thing. So doing `make` will build them. All typelist tests are compile-time checks, so if a test fail you get a compile-time error.
