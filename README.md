@@ -353,6 +353,57 @@ _.fn(CALL_R(mult, x)) > 0; // [&x](auto const &obj) { return obj.mult(x) > 0; }
 
 ```
 
+For callable objects, `args` can be used.
+
+```cpp
+using cpputils::_;
+
+struct Callable {
+    int x;
+
+    int operator()(int y) const { return x + y; }
+};
+
+_.args(x) // [x](auto const &obj) { return obj(x); }
+```
+
+## [Container views](src/include/cpputils/misc/container_views.hpp)
+
+A unified interface to produce a view of a container.
+Strings and char literals produce `std::string_view`, other containers produce `std::span`.
+If the size of the container is defined at compile-time, the span can be optionally produced with a proper `Extent`.
+
+```cpp
+using namespace cpputils;
+
+std::string const s{"Hey"};
+auto const v = as_view(s); // -> std::string_view
+
+const char *s = "Hey";
+auto const v = as_view(s); // -> std::string_view
+
+const wchar_t* s = L"ABCDEF";
+auto const v = as_view(s); // -> std::basic_string_view<wchar_t>
+
+// NOTE: containers of char-like type return a corresponding basic_string_view
+char s[] = "ABCDEF";
+auto const v = as_view(s); // -> std::string_view
+
+std::vector<char8_t> s {'A', 'B', 'C',' D', 'E', 'F'};
+auto const v = as_view(s); // -> std::basic_string_view<char8_t>
+//
+
+std::vector const vc{1, 2, 3};
+auto const v = as_view(vc); // -> std::span<int const> const
+//
+
+auto const a = std::array{1, 2, 3};
+auto const v = as_view(a); // -> std::span<int const> const
+
+auto const a = std::array{1, 2, 3};
+auto const v = as_view<with_fixed_extent>(a); // -> std::span<int const, 3> const
+```
+
 ## Details
 
 The tests are downloaded automatically in the build folder and are the only buildable thing. So doing `make` will build them. All typelist tests are compile-time checks, so if a test fail you get a compile-time error.
