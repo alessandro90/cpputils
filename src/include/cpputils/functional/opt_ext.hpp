@@ -30,41 +30,14 @@
 // NOLINTNEXTLINE
 #define INVOCABLEs(f, args) std::invocable<decltype(f), decltype(args)...>
 
+
 namespace cpputils {
-[[nodiscard]] inline constexpr auto map(auto &&f, an<std::optional> auto &&...opts) requires INVOCABLEs(f, *opts) {
-    using ret_t = RES_Ts(f, *opts);
-
-    auto const ok = (opts && ...);
-    if constexpr (is_specialization_v<ret_t, std::optional>) {
-        return ok ? INVKs(f, *opts) : ret_t{};
-    } else {
-        return ok ? std::optional{INVKs(f, *opts)} : std::optional<ret_t>{};
-    }
-}
-
-[[nodiscard]] inline constexpr auto try_or_else(auto &&f, std::invocable<> auto &&otherwise, an<std::optional> auto &&...opts) requires(INVOCABLEs(f, *opts) && std::same_as<RES_Ts(f, *opts), RES_T0(otherwise)>) {
-    return (opts && ...) ? INVKs(f, *opts) : INVK0(otherwise);
-}
-
-[[nodiscard]] inline constexpr auto try_or(auto &&f, auto &&otherwise, an<std::optional> auto &&...opts) requires(INVOCABLEs(f, *opts) && std::same_as<RES_Ts(f, *opts), std::remove_cvref_t<decltype(otherwise)>>) {
-    return (opts && ...) ? INVKs(f, *opts) : FWD(otherwise);
-}
-
-inline constexpr void apply(auto &&f, an<std::optional> auto &&...opts) requires INVOCABLEs(f, *opts) {
-    if ((opts && ...)) {
-        (std::invoke((f), FWD(*opts)), ...);
-    }
-}
-
-inline constexpr void apply_or_else(auto &&f, auto &&otherwise, an<std::optional> auto &&...opts) requires INVOCABLEs(f, *opts) {
-    if ((opts && ...)) {
-        (std::invoke(f, FWD(*opts)), ...);
-    } else {
-        INVK0(otherwise);
-    }
-}
-
 namespace detail {
+    template <typename T>
+    concept optional_like = an<T, std::optional> || an<T, expected>;
+
+    template <typename T>
+    using reference_or_value = std::conditional_t<std::is_rvalue_reference_v<T>, std::remove_cvref_t<T>, T>;
 
     template <typename F>
     struct optional_adaptor_closure;
@@ -77,7 +50,7 @@ namespace detail {
                 return std::invoke(f, FWD(args)...);
             } else {
                 return optional_adaptor_closure{
-                    [... args_ = FWD(args), f_ = f](an<std::optional> auto &&opt) -> decltype(auto) {
+                    [... args_ = FWD(args), f_ = f](optional_like auto &&opt) -> decltype(auto) {
                         return std::invoke(f_, FWD(opt), args_...);
                     }};
             }
@@ -89,7 +62,7 @@ namespace detail {
 
     template <typename F>
     struct optional_adaptor_closure : optional_adaptor<F> {
-        inline friend constexpr decltype(auto) operator>>(an<std::optional> auto &&opt, optional_adaptor_closure const &cls) {
+        inline friend constexpr decltype(auto) operator>>(optional_like auto &&opt, optional_adaptor_closure const &cls) {
             return std::invoke(cls.f, FWD(opt));
         }
     };
@@ -98,34 +71,85 @@ namespace detail {
     optional_adaptor_closure(Callable) -> optional_adaptor_closure<Callable>;
 }  // namespace detail
 
+[[nodiscard]] inline constexpr auto map(auto &&f, detail::optional_like auto &&...opts) requires INVOCABLEs(f, *opts)
+{
+    using ret_t = RES_Ts(f, *opts);
+
+    auto const ok = (opts && ...);
+    if constexpr (is_specialization_v<ret_t, std::optional>) {
+        return ok ? INVKs(f, *opts) : ret_t{};
+    } else {
+        return ok ? std::optional{INVKs(f, *opts)} : std::optional<ret_t>{};
+    }
+}
+
+[[nodiscard]] inline constexpr auto try_or_else(auto &&f, std::invocable<> auto &&otherwise, detail::optional_like auto &&...opts)
+    requires (INVOCABLEs(f, *opts) && std::same_as<RES_Ts(f, *opts), RES_T0(otherwise)>)
+{
+    return (opts && ...) ? INVKs(f, *opts) : INVK0(otherwise);
+}
+
+[[nodiscard]] inline constexpr auto try_or(auto &&f, auto &&otherwise, detail::optional_like auto &&...opts)
+    requires (INVOCABLEs(f, *opts) && std::same_as<RES_Ts(f, *opts), std::remove_cvref_t<decltype(otherwise)>>)
+{
+    return (opts && ...) ? INVKs(f, *opts) : FWD(otherwise);
+}
+
+inline constexpr void apply(auto &&f, detail::optional_like auto &&...opts) requires INVOCABLEs(f, *opts)
+{
+    if ((opts && ...)) {
+        (std::invoke((f), FWD(*opts)), ...);
+    }
+}
+
+inline constexpr void apply_or_else(auto &&f, auto &&otherwise, detail::optional_like auto &&...opts)
+    requires INVOCABLEs(f, *opts)
+{
+    if ((opts && ...)) {
+        (std::invoke(f, FWD(*opts)), ...);
+    } else {
+        INVK0(otherwise);
+    }
+}
+
+inline constexpr auto zip(detail::optional_like auto &&...opts) {
+    using Tuple_t = std::tuple<detail::reference_or_value<decltype(FWD(opts).value())>...>;
+    using Ret_t = std::optional<Tuple_t>;
+    if ((opts && ...)) {
+        return std::optional{Tuple_t{FWD(opts).value()...}};
+    } else {
+        return Ret_t{};
+    }
+}
+
 inline constexpr auto or_else = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt, std::invocable<> auto &&f) -> decltype(auto) {
+    [](detail::optional_like auto &&opt, std::invocable<> auto &&f) -> decltype(auto) {
         if (!opt) { std::invoke(f); }
         return FWD(opt);
     }};
 inline constexpr auto transform = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt, std::invocable<std::remove_cvref_t<decltype(FWD(opt).value())>> auto &&f) -> decltype(auto) {
+    [](detail::optional_like auto &&opt, std::invocable<std::remove_cvref_t<decltype(FWD(opt).value())>> auto &&f) -> decltype(auto) {
         return map(FWD(f), FWD(opt));
     }};
 inline constexpr auto if_value = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt, std::invocable<decltype(*opt)> auto &&f) -> decltype(auto) {
+    [](detail::optional_like auto &&opt, std::invocable<decltype(*opt)> auto &&f) -> decltype(auto) {
         if (opt) { std::invoke(f, *opt); }
         return FWD(opt);
     }};
 inline constexpr auto unwrap = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt) -> decltype(auto) {
+    [](detail::optional_like auto &&opt) -> decltype(auto) {
         return FWD(opt).value();
     }};
 // clang-format off
 inline constexpr auto unwrap_or = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt, auto &&else_) requires std::same_as<std::remove_cvref_t<decltype(FWD(opt).value())>, 
+    [](detail::optional_like auto &&opt, auto &&else_) requires std::same_as<std::remove_cvref_t<decltype(FWD(opt).value())>, 
                                                                          std::remove_cvref_t<decltype(else_)>> {
         return FWD(opt).value_or(FWD(else_));
     }};
 // clang-format on
 // clang-format off
 inline constexpr auto unwrap_or_else = detail::optional_adaptor{
-    [](an<std::optional> auto &&opt, std::invocable<> auto &&else_) requires std::same_as<RES_T0(else_),
+    [](detail::optional_like auto &&opt, std::invocable<> auto &&else_) requires std::same_as<RES_T0(else_),
                                                                                           std::remove_cvref_t<decltype(FWD(opt).value())>> {
         if (opt) { return FWD(opt).value(); }
         return std::invoke(FWD(else_));
