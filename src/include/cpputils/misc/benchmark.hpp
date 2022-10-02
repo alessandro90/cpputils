@@ -19,6 +19,7 @@
 
 
 namespace cpputils::benchmark {
+
 template <typename>
 struct is_duration : std::false_type {};
 
@@ -162,25 +163,35 @@ namespace detail {
         std::optional<std::string> utc;
     };
 
-    [[nodiscard]] local_and_utc today() {
+    [[nodiscard]] inline std::optional<std::tm> cpputils_localtime(std::time_t &now_time) {
+        auto const *local_time = std::localtime(&now_time);  // NOLINT
+        if (local_time == nullptr) { return std::nullopt; }
+        return *local_time;
+    }
+
+    [[nodiscard]] inline std::optional<std::tm> cpputils_gmtime(std::time_t &now_time) {
+        auto const *local_time = std::gmtime(&now_time);  // NOLINT
+        if (local_time == nullptr) { return std::nullopt; }
+        return *local_time;
+    }
+
+    [[nodiscard]] inline local_and_utc today() {
         auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::tm local_time_buf{};
-        std::tm utc_time_buf{};
-        auto *local_time = localtime_r(&now_time, &local_time_buf);  // NOLINT
-        auto *utc_time = gmtime_r(&now_time, &utc_time_buf);  // NOLINT
-        auto const time_to_maybe_str = [](std::tm *validation_check, std::tm const &date_time) -> std::optional<std::string> {
-            if (!validation_check) {
+        auto const local_time = cpputils_localtime(now_time);
+        auto const utc_time = cpputils_gmtime(now_time);
+        auto const time_to_maybe_str = [](std::optional<std::tm> const &date_time) -> std::optional<std::string> {
+            if (!date_time) {
                 return std::nullopt;
             } else {
-                auto const *str = std::asctime(&date_time);  // NOLNT
+                auto const *str = std::asctime(&date_time.value());  // NOLINT
                 auto const *newline = static_cast<char const *>(std::memchr(str, '\n', 25));  // NOLINT See https://en.cppreference.com/w/cpp/chrono/c/asctime for the 25
                 if (newline == nullptr) { return std::nullopt; }
                 return std::string{str, newline};
             }
         };
         return local_and_utc{
-            .local = time_to_maybe_str(local_time, local_time_buf),
-            .utc = time_to_maybe_str(utc_time, utc_time_buf)};
+            .local = time_to_maybe_str(local_time),
+            .utc = time_to_maybe_str(utc_time)};
     }
 
     template <duration D>
@@ -279,10 +290,10 @@ namespace formatters {
         void start(std::string_view unit_of_measure) {
             auto const times = []() {
                 auto const [local_time, utc_time] = detail::today();
-                std::string times{};
-                if (local_time) { times += "local_time," + local_time.value() + ","; }
-                if (utc_time) { times += "utc_time," + utc_time.value() + ","; }
-                return times;
+                std::string times_{};
+                if (local_time) { times_ += "local_time," + local_time.value() + ","; }
+                if (utc_time) { times_ += "utc_time," + utc_time.value() + ","; }
+                return times_;
             }();
             m_content = times + "time_unit" + "," + unit_of_measure.data() + ",";
         }
@@ -305,10 +316,10 @@ namespace formatters {
         void start(std::string_view unit_of_measure) {
             auto const times = []() {
                 auto const [local_time, utc_time] = detail::today();
-                std::string times{};
-                if (local_time) { times += "\n    local_time: " + local_time.value() + ","; }
-                if (utc_time) { times += "\n    utc_time: " + utc_time.value() + ","; }
-                return times;
+                std::string times_{};
+                if (local_time) { times_ += "\n    local_time: " + local_time.value() + ","; }
+                if (utc_time) { times_ += "\n    utc_time: " + utc_time.value() + ","; }
+                return times_;
             }();
             m_content = std::string{"{"} + times + "\n    time_unit: " + unit_of_measure.data() + ",\n";
         }
@@ -331,10 +342,10 @@ namespace formatters {
         void start(std::string_view unit_of_measure) {
             auto const times = []() {
                 auto const [local_time, utc_time] = detail::today();
-                std::string times{};
-                if (local_time) { times += "local_time: " + local_time.value() + "\n"; }
-                if (utc_time) { times += "utc_time: " + utc_time.value() + "\n"; }
-                return times;
+                std::string times_{};
+                if (local_time) { times_ += "local_time: " + local_time.value() + "\n"; }
+                if (utc_time) { times_ += "utc_time: " + utc_time.value() + "\n"; }
+                return times_;
             }();
             m_content = times + "time_unit: " + unit_of_measure.data() + "\n";
         }
