@@ -12,7 +12,6 @@
 #include <iterator>
 #include <optional>
 #include <ranges>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -33,7 +32,10 @@ template <typename L>
 concept time_logger =
     requires (L logger) {
         logger[std::string{}] = std::declval<typename L::mapped_type>();
-    } && duration<typename L::mapped_type>;
+    }
+    && std::movable<L>
+    && std::copyable<L>
+    && duration<typename L::mapped_type>;
 
 template <typename C>
 concept time_counter =
@@ -205,15 +207,15 @@ namespace detail {
 
     // If logger is not sortable, copy the contents into a vector and sort it, otherwise just use logger
     template <time_logger Logger>
-    decltype(auto) make_sorted(Logger const &logger) {
+    auto make_sorted(Logger logger) {
         auto const sorter = [](auto lhs, auto rhs) { return rhs.second < lhs.second; };
         if constexpr (requires { requires std::sortable<std::ranges::iterator_t<Logger>>; }) {
             std::ranges::sort(logger, sorter);
-            return (logger);  // return a reference
+            return logger;
         } else {
             std::vector<std::pair<std::string, typename Logger::mapped_type>> copied_elements;
             copied_elements.reserve(std::ranges::size(logger));
-            std::ranges::copy(logger, std::back_inserter(copied_elements));
+            std::ranges::move(logger, std::back_inserter(copied_elements));
             std::ranges::sort(copied_elements, sorter);
             return copied_elements;
         }
@@ -237,11 +239,11 @@ namespace detail {
     template <typename DerivedFormatter>
     struct base_formatter {
         template <time_logger Logger>
-        void parse(Logger const &logger) {
+        void parse(Logger logger) {
             static constexpr auto time_unit = detect_time_unit<typename Logger::mapped_type>();
             auto &self = underlying();
             self.start(time_unit);
-            decltype(auto) sorted = detail::make_sorted(logger);
+            auto sorted = detail::make_sorted(std::move(logger));
             auto const time_values = sorted | std::views::transform([](auto const &kv) { return DerivedFormatter::process_data(kv); });
             auto const records = join_with(self.separator(), std::views::all(time_values));
             self.m_content += records;
@@ -399,7 +401,7 @@ namespace formatters {
                 times += "      </ul>\n\n";
                 return times;
             }();
-            m_content += times + "      <h2>Unit of measure</h2>\n\n" + "      " + unit_of_measure.data() + "\n\n";
+            m_content += times + "      <h2>Unit of measure</h2>\n\n      " + unit_of_measure.data() + "\n\n";
             m_content += "      <h2>Data</h2>\n\n      <ul>\n";
         }
 
@@ -422,7 +424,7 @@ public:
     template <typename Formatter, time_logger Logger>
     void format_as(Logger const &logger) requires report_formatter<Logger, Formatter>
     {
-        m_formatter.emplace<Formatter>();
+        m_formatter.template emplace<Formatter>();
         std::visit([&logger](auto &f) { f.parse(logger); }, m_formatter);
     }
 
