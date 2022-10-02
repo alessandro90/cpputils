@@ -29,7 +29,8 @@ namespace detail {
     template <typename F, typename G, typename... Ts>
     concept chainable = std::invocable<G, Ts...> && std::invocable<F, std::invoke_result_t<G, Ts...>>;
 
-    constexpr auto chain_invoke(auto &&f, auto &&g, auto &&...args) requires chainable<decltype(FWD(f)), decltype(FWD(g)), decltype(FWD(args))...> {
+    constexpr auto chain_invoke(auto &&f, auto &&g, auto &&...args) requires chainable<decltype(FWD(f)), decltype(FWD(g)), decltype(FWD(args))...>
+    {
         return std::invoke(FWD(f), std::invoke(FWD(g), FWD(args)...));
     }
 
@@ -53,9 +54,11 @@ namespace detail {
     template <>
     struct composer<void> {
         constexpr auto operator*(auto &&g) const {
+            // clang-format off
             return make_composer([g_ = FWD(g)](auto &&...xs) requires std::invocable<decltype(g), decltype(FWD(xs))...> {
                 return std::invoke(g_, FWD(xs)...);
             });
+            // clang-format on
         }
 
         constexpr auto operator/(auto &&g) const {

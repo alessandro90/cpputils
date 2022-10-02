@@ -27,13 +27,8 @@
 // };
 namespace cpputils {
 
-template <std::ranges::input_range Range,
-          minimal_incrementable Index = std::size_t>
-// clang-format off
-requires std::copyable<Index> &&
-         std::is_default_constructible_v<Index> &&
-         std::ranges::view<Range>
-// clang-format on
+template <std::ranges::input_range Range, minimal_incrementable Index = std::size_t>
+requires std::copyable<Index> && std::is_default_constructible_v<Index> && std::ranges::view<Range>
 class enumerate_view : public std::ranges::view_interface<enumerate_view<Range, Index>> {
 public:
     struct enumeration {
