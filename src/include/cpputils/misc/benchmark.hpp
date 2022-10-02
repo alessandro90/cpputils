@@ -218,7 +218,7 @@ namespace detail {
     // If logger is not sortable, copy the contents into a vector and sort it, otherwise just use logger
     template <time_logger Logger>
     auto make_sorted(Logger logger) {
-        auto const sorter = [](auto lhs, auto rhs) { return rhs.second < lhs.second; };
+        auto const sorter = [](auto const &lhs, auto const &rhs) { return rhs.second < lhs.second; };
         if constexpr (requires { requires std::sortable<std::ranges::iterator_t<Logger>>; }) {
             std::ranges::sort(logger, sorter);
             return logger;
