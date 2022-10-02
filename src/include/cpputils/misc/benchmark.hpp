@@ -370,11 +370,11 @@ namespace formatters {
             auto const times = []() -> std::string {
                 auto const [local_time, utc_time] = detail::today();
                 if (!local_time && !utc_time) { return ""; }
-                std::string times = "## Date time\n\n";
-                if (local_time) { times += "- Local time: " + local_time.value() + "\n"; }
-                if (utc_time) { times += "- UTC time: " + utc_time.value() + "\n"; }
-                times += "\n";
-                return times;
+                std::string times_ = "## Date time\n\n";
+                if (local_time) { times_ += "- Local time: " + local_time.value() + "\n"; }
+                if (utc_time) { times_ += "- UTC time: " + utc_time.value() + "\n"; }
+                times_ += "\n";
+                return times_;
             }();
             m_content += times + "## Unit of measure\n\n-Unit: " + unit_of_measure.data() + "\n\n## Data\n\n";
         }
@@ -406,14 +406,14 @@ namespace formatters {
             auto const times = []() -> std::string {
                 auto const [local_time, utc_time] = detail::today();
                 if (!local_time && !utc_time) { return ""; }
-                std::string times =
+                std::string times_ =
                     "      <h2>Date and time</h2>\n\n"
                     "      <ul>\n";
 
-                if (local_time) { times += "        <li>Local: " + local_time.value() + "</li>\n"; }
-                if (utc_time) { times += "        <li>Local: " + utc_time.value() + "</li>\n"; }
-                times += "      </ul>\n\n";
-                return times;
+                if (local_time) { times_ += "        <li>Local: " + local_time.value() + "</li>\n"; }
+                if (utc_time) { times_ += "        <li>Local: " + utc_time.value() + "</li>\n"; }
+                times_ += "      </ul>\n\n";
+                return times_;
             }();
             m_content += times + "      <h2>Unit of measure</h2>\n\n      " + unit_of_measure.data() + "\n\n";
             m_content += "      <h2>Data</h2>\n\n      <ul>\n";
