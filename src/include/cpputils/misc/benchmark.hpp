@@ -1,6 +1,7 @@
 #ifndef CPPUTILS_BENCHMARK_HPP
 #define CPPUTILS_BENCHMARK_HPP
 
+#include "../functional/opt_ext.hpp"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -177,21 +178,16 @@ namespace detail {
 
     [[nodiscard]] inline local_and_utc today() {
         auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        auto const local_time = cpputils_localtime(now_time);
-        auto const utc_time = cpputils_gmtime(now_time);
-        auto const time_to_maybe_str = [](std::optional<std::tm> const &date_time) -> std::optional<std::string> {
-            if (!date_time) {
-                return std::nullopt;
-            } else {
-                auto const *str = std::asctime(&date_time.value());  // NOLINT
-                auto const *newline = static_cast<char const *>(std::memchr(str, '\n', 25));  // NOLINT See https://en.cppreference.com/w/cpp/chrono/c/asctime for the 25
-                if (newline == nullptr) { return std::nullopt; }
-                return std::string{str, newline};
-            }
+        auto const time_to_str = [](std::tm const &date_time) -> std::optional<std::string> {
+            auto const *str = std::asctime(&date_time);  // NOLINT
+            auto const *newline = static_cast<char const *>(std::memchr(str, '\n', 25));  // NOLINT See https://en.cppreference.com/w/cpp/chrono/c/asctime for the 25
+            if (newline == nullptr) { return std::nullopt; }
+            return std::string{str, newline};
         };
+
         return local_and_utc{
-            .local = time_to_maybe_str(local_time),
-            .utc = time_to_maybe_str(utc_time)};
+            .local = cpputils_localtime(now_time) >> transform(time_to_str),
+            .utc = cpputils_gmtime(now_time) >> transform(time_to_str)};
     }
 
     template <duration D>
