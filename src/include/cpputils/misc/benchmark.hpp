@@ -177,17 +177,17 @@ namespace detail {
     }
 
     [[nodiscard]] inline local_and_utc today() {
-        auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        auto const time_to_str = [](std::tm const &date_time) -> std::optional<std::string> {
+        auto const time_to_str = transform([](std::tm const &date_time) -> std::optional<std::string> {
             auto const *str = std::asctime(&date_time);  // NOLINT
             auto const *newline = static_cast<char const *>(std::memchr(str, '\n', 25));  // NOLINT See https://en.cppreference.com/w/cpp/chrono/c/asctime for the 25
             if (newline == nullptr) { return std::nullopt; }
             return std::string{str, newline};
-        };
+        });
 
-        return local_and_utc{
-            .local = cpputils_localtime(now_time) >> transform(time_to_str),
-            .utc = cpputils_gmtime(now_time) >> transform(time_to_str)};
+        auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+        return {.local = cpputils_localtime(now_time) >> time_to_str,
+                .utc = cpputils_gmtime(now_time) >> time_to_str};
     }
 
     template <duration D>
