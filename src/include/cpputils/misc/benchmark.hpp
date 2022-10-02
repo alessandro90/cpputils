@@ -317,8 +317,8 @@ namespace formatters {
             auto const times = []() {
                 auto const [local_time, utc_time] = detail::today();
                 std::string times_{};
-                if (local_time) { times_ += "\n    local_time: " + local_time.value() + ","; }
-                if (utc_time) { times_ += "\n    utc_time: " + utc_time.value() + ","; }
+                if (local_time) { times_ += "\n    local_time: \"" + local_time.value() + "\","; }
+                if (utc_time) { times_ += "\n    utc_time: \"" + utc_time.value() + "\","; }
                 return times_;
             }();
             m_content = std::string{"{"} + times + "\n    time_unit: " + unit_of_measure.data() + ",\n";
@@ -343,8 +343,8 @@ namespace formatters {
             auto const times = []() {
                 auto const [local_time, utc_time] = detail::today();
                 std::string times_{};
-                if (local_time) { times_ += "local_time: " + local_time.value() + "\n"; }
-                if (utc_time) { times_ += "utc_time: " + utc_time.value() + "\n"; }
+                if (local_time) { times_ += "local_time: \"" + local_time.value() + "\"\n"; }
+                if (utc_time) { times_ += "utc_time: \"" + utc_time.value() + "\"\n"; }
                 return times_;
             }();
             m_content = times + "time_unit: " + unit_of_measure.data() + "\n";
