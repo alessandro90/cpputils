@@ -53,7 +53,38 @@ Logger &make_static_logger() {
     return logger;
 }
 
-template <time_logger Logger, time_counter TimeCounter>
+using default_clock = std::chrono::steady_clock;
+using default_duration = default_clock::duration;
+
+template <typename Clock = default_clock>
+class default_counter {
+public:
+    using clock_t = Clock;
+
+    void start() {
+        m_start = std::chrono::steady_clock::now();
+    }
+
+    void stop() {
+        m_stop = std::chrono::steady_clock::now();
+    }
+
+    [[nodiscard]] auto delta() const {
+        return m_stop - m_start;
+    }
+
+private:
+    std::chrono::time_point<Clock> m_start{};
+    std::chrono::time_point<Clock> m_stop{};
+};
+
+template <duration D>
+using default_container = std::unordered_map<std::string, D>;
+
+template <duration D = default_duration>
+using default_logger = default_container<D>;
+
+template <time_logger Logger = default_logger<>, time_counter TimeCounter = default_counter<>>
 class timer {
 public:
     using logger_t = Logger;
@@ -109,34 +140,6 @@ private:
     std::string m_message{};
     bool m_active{false};
 };
-
-using default_clock = std::chrono::steady_clock;
-using default_duration = default_clock::duration;
-
-class default_counter {
-public:
-    void start() {
-        m_start = std::chrono::steady_clock::now();
-    }
-
-    void stop() {
-        m_stop = std::chrono::steady_clock::now();
-    }
-
-    [[nodiscard]] auto delta() const {
-        return m_stop - m_start;
-    }
-
-private:
-    std::chrono::time_point<default_clock> m_start{};
-    std::chrono::time_point<default_clock> m_stop{};
-};
-
-template <duration D>
-using default_container = std::unordered_map<std::string, D>;
-
-template <duration D = default_duration>
-using default_logger = default_container<D>;
 
 template <typename T>
 concept pair_like =
