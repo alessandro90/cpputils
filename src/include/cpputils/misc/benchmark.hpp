@@ -321,7 +321,7 @@ namespace formatters {
                 if (utc_time) { times_ += "\n    utc_time: \"" + utc_time.value() + "\","; }
                 return times_;
             }();
-            m_content = std::string{"{"} + times + "\n    time_unit: " + unit_of_measure.data() + ",\n";
+            m_content = std::string{"{"} + times + "\n    time_unit: \"" + unit_of_measure.data() + "\",\n";
         }
         [[nodiscard]] static std::string process_data(pair_like auto const kv) {
             auto const elapsed_time = std::to_string(kv.second.count());
@@ -347,7 +347,7 @@ namespace formatters {
                 if (utc_time) { times_ += "utc_time: \"" + utc_time.value() + "\"\n"; }
                 return times_;
             }();
-            m_content = times + "time_unit: " + unit_of_measure.data() + "\n";
+            m_content = times + "time_unit: \"" + unit_of_measure.data() + "\"\n";
         }
         [[nodiscard]] static std::string process_data(pair_like auto const kv) {
             auto const elapsed_time = std::to_string(kv.second.count());
