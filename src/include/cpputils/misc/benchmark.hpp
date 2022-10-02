@@ -440,7 +440,6 @@ public:
 
     [[nodiscard]] std::string_view get_report() const {
         return std::visit([](auto const &f) { return f.get(); }, m_formatter);
-        ;
     }
 
     [[nodiscard]] std::string_view get_format() const {
