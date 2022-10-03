@@ -1,7 +1,7 @@
 #ifndef CPPUTILS_EXPECTED_HPP
 #define CPPUTILS_EXPECTED_HPP
 
-#include "../traits/is_specialization_of.hpp"
+#include "../meta/traits.hpp"
 #include <concepts>
 #include <exception>
 #include <functional>
@@ -33,9 +33,9 @@ struct bad_expected_access_throw_policy {
 
 template <typename Policy>
 concept expected_bad_access_policy = requires {
-    Policy::bad_value_access();
-    Policy::bad_error_access();
-};
+                                         Policy::bad_value_access();
+                                         Policy::bad_error_access();
+                                     };
 
 struct flag_value_t {};
 struct flag_error_t {};
@@ -46,7 +46,7 @@ inline constexpr auto flag_error = flag_error_t{};
 namespace detail {
 
     template <template <typename> typename Condition, typename A, typename B>
-    inline constexpr auto both_types_v = Condition<A>::value &&Condition<B>::value;
+    inline constexpr auto both_types_v = Condition<A>::value && Condition<B>::value;
 
     template <template <typename> typename Condition, typename A, typename B>
     inline constexpr auto one_of_v = Condition<A>::value || Condition<B>::value;
@@ -234,17 +234,17 @@ namespace detail {
         constexpr expected_data() = delete;
 
         template <expected_arg_constructible<value_t> Arg>
-        constexpr expected_data(flag_value_t, Arg &&v) requires(!is_specialization_v<Arg, expected_data>)
+        constexpr expected_data(flag_value_t, Arg &&v) requires (!is_specialization_v<Arg, expected_data>)
             : m_val{get_arg(FWD(v))}
             , has_val{true} {}
 
         template <expected_arg_constructible<error_t> Arg>
-        constexpr expected_data(flag_error_t, Arg &&v) requires(!is_specialization_v<Arg, expected_data>)
+        constexpr expected_data(flag_error_t, Arg &&v) requires (!is_specialization_v<Arg, expected_data>)
             : m_err{get_arg(FWD(v))} {}
 
         constexpr expected_data(flag_value_t, std::in_place_t, auto &&...args) requires std::negation_v<std::is_pointer<value_t>> && std::constructible_from<value_t, decltype(args)...>
-            : m_val{FWD(args)...},
-              has_val{true} {}
+            : m_val{FWD(args)...}
+            , has_val{true} {}
 
         constexpr expected_data(flag_error_t, std::in_place_t, auto &&...args) requires std::negation_v<std::is_pointer<error_t>> && std::constructible_from<error_t, decltype(args)...>
             : m_err{FWD(args)...} {}
@@ -264,7 +264,8 @@ namespace detail {
         constexpr expected_data(expected_data const &) requires both_types_v<std::is_trivially_copy_constructible, value_t, error_t>
         = default;
 
-        constexpr expected_data(expected_data const &other) requires has_non_default_copy_ctor_v<value_t, error_t> {
+        constexpr expected_data(expected_data const &other) requires has_non_default_copy_ctor_v<value_t, error_t>
+        {
             expected_resource_helper::initialize(*this, other);
         }
 
@@ -276,18 +277,20 @@ namespace detail {
         constexpr expected_data(expected_data &&other) noexcept(
             noexcept(
                 expected_resource_helper::initialize(std::declval<expected_data &>(),
-                                                     std::declval<std::remove_cvref_t<decltype(other)>>()))) requires has_non_default_move_ctor_v<value_t, error_t> {
+                                                     std::declval<std::remove_cvref_t<decltype(other)>>()))) requires has_non_default_move_ctor_v<value_t, error_t>
+        {
             expected_resource_helper::initialize(*this, std::move(other));
         }
 
         constexpr expected_data &operator=(expected_data const &) = delete;
 
         constexpr expected_data &operator=(expected_data const &) requires both_types_v<std::is_trivially_copy_assignable, value_t, error_t>  //
-            && both_types_v<std::is_trivially_destructible, value_t, error_t>  //
-            && both_types_v<std::is_trivially_copy_constructible, value_t, error_t>
+                                                                               && both_types_v<std::is_trivially_destructible, value_t, error_t>  //
+                                                                               && both_types_v<std::is_trivially_copy_constructible, value_t, error_t>
         = default;
 
-        constexpr expected_data &operator=(expected_data const &rhs) requires has_non_default_copy_assign_v<value_t, error_t> {  // NOLINT(cert-oop54-cpp)
+        constexpr expected_data &operator=(expected_data const &rhs) requires has_non_default_copy_assign_v<value_t, error_t>
+        {  // NOLINT(cert-oop54-cpp)
             expected_resource_helper::copy(*this, rhs);
             return *this;
         }
@@ -295,13 +298,14 @@ namespace detail {
         constexpr expected_data &operator=(expected_data &&) noexcept = delete;
 
         constexpr expected_data &operator=(expected_data &&) noexcept requires both_types_v<std::is_trivially_move_assignable, value_t, error_t>  //
-            && both_types_v<std::is_trivially_destructible, value_t, error_t>  //
-            && both_types_v<std::is_trivially_move_constructible, value_t, error_t>
+                                                                                   && both_types_v<std::is_trivially_destructible, value_t, error_t>  //
+                                                                                   && both_types_v<std::is_trivially_move_constructible, value_t, error_t>
         = default;
 
         constexpr expected_data &operator=(expected_data &&rhs) noexcept(
             noexcept(expected_resource_helper::copy(std::declval<expected_data &>(),
-                                                    std::declval<std::remove_cvref_t<decltype(rhs)>>))) requires has_non_default_move_assign_v<value_t, error_t> {
+                                                    std::declval<std::remove_cvref_t<decltype(rhs)>>))) requires has_non_default_move_assign_v<value_t, error_t>
+        {
             expected_resource_helper::copy(*this, std::move(rhs));
             return *this;
         }
@@ -679,7 +683,8 @@ private:
     }
 
     static constexpr auto transform_error_impl(auto &&e, std::invocable<decltype(FWD(e).error_unchecked())> auto &&f)  //
-        requires is_specialization_v<std::invoke_result_t<decltype(f), decltype(FWD(e).error_unchecked())>, expected> {
+        requires is_specialization_v<std::invoke_result_t<decltype(f), decltype(FWD(e).error_unchecked())>, expected>
+    {
         using ret_t = std::invoke_result_t<decltype(f), decltype(FWD(e).error_unchecked())>;
         static_assert(std::is_same_v<typename base_expected::value_t, typename ret_t::value_t>);
         if (!e) { return std::invoke(FWD(f), FWD(e).error_unchecked()); }
@@ -700,7 +705,8 @@ private:
     }
 
     static constexpr auto value_or_else_impl(auto &&e, std::invocable<decltype(FWD(e).error_unchecked())> auto &&alternative)  //
-        requires std::is_convertible_v<decltype(FWD(e).value_unchecked()), decltype(std::invoke(FWD(alternative), FWD(e).error_unchecked()))> {
+        requires std::is_convertible_v<decltype(FWD(e).value_unchecked()), decltype(std::invoke(FWD(alternative), FWD(e).error_unchecked()))>
+    {
         if (e) { return FWD(e).value_unchecked(); }
         return std::invoke(FWD(alternative), FWD(e).error_unchecked());
     }
@@ -712,7 +718,8 @@ private:
     }
 
     static constexpr auto error_or_else_impl(auto &&e, std::invocable<decltype(FWD(e).value_unchecked())> auto &&alternative)  //
-        requires std::is_convertible_v<decltype(FWD(e).error_unchecked()), decltype(std::invoke(FWD(alternative), FWD(e).value_unchecked()))> {
+        requires std::is_convertible_v<decltype(FWD(e).error_unchecked()), decltype(std::invoke(FWD(alternative), FWD(e).value_unchecked()))>
+    {
         if (!e) { return FWD(e).error_unchecked(); }
         return std::invoke(FWD(alternative), FWD(e).value_unchecked());
     }

@@ -1,8 +1,7 @@
 #ifndef CPPUTILS_STRONG_NUMBER_HPP
 #define CPPUTILS_STRONG_NUMBER_HPP
 
-#include "../traits/cpputils_concepts.hpp"
-#include "../traits/is_specialization_of.hpp"
+#include "../meta/traits.hpp"
 #include <cassert>
 #include <compare>
 #include <concepts>
@@ -56,7 +55,8 @@ namespace detail {
     concept a_modulo = std::numeric_limits<T>::is_modulo;
 
     template <typename T>
-    concept a_bit_ops_compatible = std::unsigned_integral<T> && !std::is_same_v<T, bool>;
+    concept a_bit_ops_compatible = std::unsigned_integral<T> && !
+    std::is_same_v<T, bool>;
 
     template <typename T>
     concept convertible = arithmetic<T> || an<T, number>;
@@ -158,11 +158,13 @@ public:
     = default;
 
 
-    [[nodiscard]] constexpr auto operator<(number const &rhs) const noexcept requires std::floating_point<I> {
+    [[nodiscard]] constexpr auto operator<(number const &rhs) const noexcept requires std::floating_point<I>
+    {
         return m_i < rhs.m_i;
     }
 
-    [[nodiscard]] constexpr auto operator>(number const &rhs) const noexcept requires std::floating_point<I> {
+    [[nodiscard]] constexpr auto operator>(number const &rhs) const noexcept requires std::floating_point<I>
+    {
         return m_i > rhs.m_i;
     }
 
@@ -174,26 +176,30 @@ public:
     [[nodiscard]] constexpr auto as() const noexcept { return detail::as<NewType>(m_i); }
 
     // wrapping ops
-    [[nodiscard]] constexpr auto wrapping_add(number const &rhs) const noexcept requires detail::a_modulo<I> {
+    [[nodiscard]] constexpr auto wrapping_add(number const &rhs) const noexcept requires detail::a_modulo<I>
+    {
         auto temp{*this};
         temp.m_i += rhs.m_i;
         return temp;
     }
 
-    [[nodiscard]] constexpr auto wrapping_sub(number const &rhs) const noexcept requires detail::a_modulo<I> {
+    [[nodiscard]] constexpr auto wrapping_sub(number const &rhs) const noexcept requires detail::a_modulo<I>
+    {
         auto temp{*this};
         temp.m_i -= rhs.m_i;
         return temp;
     }
 
     // Modulo ops
-    constexpr auto &operator%=(number const &rhs) noexcept requires std::integral<I> {
+    constexpr auto &operator%=(number const &rhs) noexcept requires std::integral<I>
+    {
         assert(!detail::is_error_result_mod(m_i, rhs.m_i));
         m_i %= rhs.m_i;
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator%(number const &rhs) noexcept requires std::integral<I> {
+    [[nodiscard]] constexpr auto operator%(number const &rhs) noexcept requires std::integral<I>
+    {
         assert(!detail::is_error_result_mod(m_i, rhs.m_i));
         return number{static_cast<I>(m_i % rhs.m_i)};
     }
@@ -249,7 +255,8 @@ public:
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator-() const noexcept requires std::is_signed_v<I> {
+    [[nodiscard]] constexpr auto operator-() const noexcept requires std::is_signed_v<I>
+    {
         assert(!detail::is_error_result_mul(m_i, I{-1}));
         return number{static_cast<I>(-m_i)};
     }
@@ -277,52 +284,63 @@ public:
     }
 
     // bits operations
-    constexpr auto &operator&=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    constexpr auto &operator&=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         m_i &= rhs.m_i;
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator&(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    [[nodiscard]] constexpr auto operator&(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         return number{static_cast<I>(m_i & rhs.m_i)};
     }
 
-    constexpr auto &operator|=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    constexpr auto &operator|=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         m_i |= rhs.m_i;
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator|(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    [[nodiscard]] constexpr auto operator|(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         return number{static_cast<I>(m_i | rhs.m_i)};
     }
 
-    constexpr auto &operator^=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    constexpr auto &operator^=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         m_i ^= rhs.m_i;
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator^(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    [[nodiscard]] constexpr auto operator^(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         return number{static_cast<I>(m_i ^ rhs.m_i)};
     }
 
-    constexpr auto &operator<<=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    constexpr auto &operator<<=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         m_i <<= rhs.m_i;
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator<<(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    [[nodiscard]] constexpr auto operator<<(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         return number{static_cast<I>(m_i << rhs.m_i)};
     }
 
-    constexpr auto &operator>>=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    constexpr auto &operator>>=(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         m_i >>= rhs.m_i;
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator>>(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I> {
+    [[nodiscard]] constexpr auto operator>>(number const &rhs) noexcept requires detail::a_bit_ops_compatible<I>
+    {
         return number{static_cast<I>(m_i >> rhs.m_i)};
     }
 
-    [[nodiscard]] constexpr auto operator~() const noexcept requires detail::a_bit_ops_compatible<I> {
+    [[nodiscard]] constexpr auto operator~() const noexcept requires detail::a_bit_ops_compatible<I>
+    {
         return number{static_cast<I>(~m_i)};
     }
     // clang-format off

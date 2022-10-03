@@ -45,9 +45,6 @@ namespace detail {
     //     [[nodiscard]] Q const &self() const { return static_cast<Q const &>(*this); }
     // };
 
-    inline constexpr auto g_kelvin_reference = f64{273.15};
-    inline constexpr auto g_mile_reference = f64{1609.344};
-
 }  // namespace detail
 
 namespace quantity_tags {
@@ -109,6 +106,11 @@ public:
     template <auto ToBase_, auto FromBase_>
     explicit(false) constexpr operator quantity<ToBase_, FromBase_, UnderlyingType, Tag>() const {  // NOLINT
         return quantity<ToBase_, FromBase_, UnderlyingType, Tag>{FromBase_(ToBase(value()))};
+    }
+
+    template <auto ToBase_, auto FromBase_, typename UnderlyingType_>
+    requires(!std::is_same_v<UnderlyingType, UnderlyingType_>) explicit constexpr operator quantity<ToBase_, FromBase_, UnderlyingType_, Tag>() const {  // NOLINT
+        return quantity<ToBase_, FromBase_, UnderlyingType_, Tag>{FromBase_(ToBase(static_cast<UnderlyingType_>(value())))};
     }
 
 private:

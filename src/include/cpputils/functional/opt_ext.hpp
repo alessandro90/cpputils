@@ -1,13 +1,13 @@
 #ifndef CPPUTILS_OPTIONAL_EXTENSION_HPP
 #define CPPUTILS_OPTIONAL_EXTENSION_HPP
 
-#include "../traits/cpputils_concepts.hpp"
-#include "../traits/is_specialization_of.hpp"
+#include "../meta/traits.hpp"
 #include "expected.hpp"
 #include <functional>
 #include <optional>
 #include <type_traits>
 #include <utility>
+
 
 // Utility macros. #undef'd at end of file
 // NOLINTNEXTLINE

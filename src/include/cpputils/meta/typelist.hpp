@@ -1,12 +1,12 @@
 #ifndef CPPUTILS_TYPELIST_HPP
 #define CPPUTILS_TYPELIST_HPP
 
-#include "cpputils/traits/cpputils_concepts.hpp"
-#include "cpputils/traits/is_specialization_of.hpp"
+#include "cpputils/meta/traits.hpp"
 #include <concepts>
 #include <cstddef>
 #include <type_traits>
 #include <utility>
+
 
 namespace cpputils::tl {
 
@@ -261,7 +261,8 @@ struct filter<F, typelist<>> {
 };
 
 template <template <typename> typename F, typename... Ts>
-requires(predicate<F<Ts>> &&...) struct filter<F, typelist<Ts...>> {
+requires (predicate<F<Ts>> && ...)
+struct filter<F, typelist<Ts...>> {
     using list = std::conditional_t<
         F<typename inner<typename head<typelist<Ts...>>::list>::type>::value,
         typename join<
@@ -305,7 +306,8 @@ struct take_while<F, typelist<>> {
 };
 
 template <template <typename> typename F, typename... Ts>
-requires(predicate<F<Ts>> &&...) struct take_while<F, typelist<Ts...>> {
+requires (predicate<F<Ts>> && ...)
+struct take_while<F, typelist<Ts...>> {
     using list = std::conditional_t<
         F<typename inner<typename head<typelist<Ts...>>::list>::type>::value,
         typename join<typename head<typelist<Ts...>>::list,
@@ -349,7 +351,8 @@ template <typename...>
 struct zip;
 
 template <an<typelist>... lists>
-requires((empty<lists>::value && ...) && sizeof...(lists) > 1) struct zip<lists...> {
+requires ((empty<lists>::value && ...) && sizeof...(lists) > 1)
+struct zip<lists...> {
     using list = typelist<>;
 };
 
@@ -362,9 +365,10 @@ namespace detail {
 }  // namespace detail
 
 template <an<typelist>... lists>
-requires((!empty<lists>::value && ...)
-         && detail::same_len<lists...>::value
-         && sizeof...(lists) > 1) struct zip<lists...> {
+requires ((!empty<lists>::value && ...)
+          && detail::same_len<lists...>::value
+          && sizeof...(lists) > 1)
+struct zip<lists...> {
     using list = prepend<typename join<typename head<lists>::list...>::list,
                          typename zip<typename tail<lists>::list...>::list>::list;
 };
@@ -421,7 +425,8 @@ template <template <typename> typename F, typename... Ts>
 struct map;
 
 template <template <typename> typename F, typename... Ts>
-requires(transformation<F<Ts>> &&...) struct map<F, typelist<Ts...>> {
+requires (transformation<F<Ts>> && ...)
+struct map<F, typelist<Ts...>> {
     using list = detail::map_impl<F, typelist<>, typelist<Ts...>>::list;
 };
 
@@ -457,7 +462,8 @@ struct count_if<P, typelist<>> {
 };
 
 template <template <typename> typename P, typename... Ts>
-requires(predicate<P<Ts>> &&...) struct count_if<P, typelist<Ts...>> {
+requires (predicate<P<Ts>> && ...)
+struct count_if<P, typelist<Ts...>> {
     inline static constexpr std::size_t value =
         (P<typename inner<typename head<typelist<Ts...>>::list>::type>::value ? 1 : 0)
         + count_if<P, typename tail<typelist<Ts...>>::list>::value;
@@ -493,7 +499,8 @@ struct drop_while<P, typelist<>> {
 };
 
 template <template <typename> typename P, typename... Ts>
-requires(predicate<P<Ts>> &&...) struct drop_while<P, typelist<Ts...>> {
+requires (predicate<P<Ts>> && ...)
+struct drop_while<P, typelist<Ts...>> {
     using list = std::conditional_t<P<typename inner<typename head<typelist<Ts...>>::list>::type>::value,
                                     typename drop_while<P, typename tail<typelist<Ts...>>::list>::list,
                                     typelist<Ts...>>;
@@ -547,14 +554,16 @@ template <template <typename...> typename, typename...>
 struct zip_with;
 
 template <template <typename...> typename F, an<typelist>... lists>
-requires((empty<lists>::value && ...) && sizeof...(lists) > 1) struct zip_with<F, lists...> {
+requires ((empty<lists>::value && ...) && sizeof...(lists) > 1)
+struct zip_with<F, lists...> {
     using list = typelist<>;
 };
 
 template <template <typename...> typename F, an<typelist>... lists>
-requires((!empty<lists>::value && ...)
-         && detail::same_len<lists...>::value
-         && sizeof...(lists) > 1) struct zip_with<F, lists...> {
+requires ((!empty<lists>::value && ...)
+          && detail::same_len<lists...>::value
+          && sizeof...(lists) > 1)
+struct zip_with<F, lists...> {
     using list = join<typelist<typename F<typename inner<typename head<lists>::list>::type...>::type>,
                       typename zip_with<F, typename tail<lists>::list...>::list>::list;
 };
@@ -562,9 +571,9 @@ requires((!empty<lists>::value && ...)
 // compose
 namespace detail {
     template <typename Closure, typename Typelist>
-    concept closure = an<Typelist, typelist> && requires() {
-        typename Closure::list<Typelist>;
-    };
+    concept closure = an<Typelist, typelist> && requires () {
+                                                    typename Closure::list<Typelist>;
+                                                };
 
     template <an<typelist> T, closure<T> Closure, typename... Closures>
     struct compose_impl {
@@ -626,7 +635,8 @@ struct fold<F> {
 template <template <typename> typename... P>
 struct compose_predicate {
     template <typename T>
-    requires(predicate<P<T>> &&...) struct composed
+    requires (predicate<P<T>> && ...)
+    struct composed
         : std::conjunction<P<T>...> {};
 };
 

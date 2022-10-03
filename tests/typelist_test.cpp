@@ -1,4 +1,4 @@
-#include "cpputils/traits/typelist.hpp"
+#include "cpputils/meta/typelist.hpp"
 #include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <tuple>

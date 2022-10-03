@@ -10,8 +10,8 @@
 #include "types/number.hpp"
 #include "types/static_string.hpp"
 
-#include "traits/cpputils_concepts.hpp"
-#include "traits/is_specialization_of.hpp"
-#include "traits/typelist.hpp"
+#include "meta/traits.hpp"
+#include "meta/typelist.hpp"
+
 
 #endif

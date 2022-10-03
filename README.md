@@ -236,7 +236,7 @@ std::optional{} >> unwrap_or(10); // == 10
 std::optional{} >> unwrap_or_else(get_good_default); // == 42
 ```
 
-## [typelist](src/include/cpputils/traits/typelist.hpp)
+## [typelist](src/include/cpputils/meta/typelist.hpp)
 
 An exercise in template metaprogramming. I tried to mimic some of the most common functional features applied to types.
 The basic type is the typelist which is just en empty variadic struct.

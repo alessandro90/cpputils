@@ -20,19 +20,22 @@ namespace cpputils {
     inline constexpr auto is_##trait_name##_v = is_##trait_name<Q>::value;       \
                                                                                  \
     template <typename Q>                                                        \
-    concept concept_name = is_##trait_name##_v<Q> /* NOLINT */
+    concept concept_name = is_                                                   \
+    ##trait_name##_v<Q> /* NOLINT */
 
 // NOLINTNEXTLINE
-#define CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(result_quantity, lhs_quantity, operator_type, rhs_quantity)                      \
-    [[nodiscard]] constexpr result_quantity operator operator_type(lhs_quantity const &lhs, rhs_quantity const &rhs) { /* NOLINT */ \
-        return result_quantity{static_cast<result_quantity::value_type>(lhs.value() operator_type rhs.value())}; /* NOLINT */       \
+#define CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(result_quantity, lhs_quantity, operator_type, rhs_quantity)                                        \
+    template <typename Unit>                                                                                                                          \
+    [[nodiscard]] constexpr result_quantity<Unit> operator operator_type(lhs_quantity<Unit> const &lhs, rhs_quantity<Unit> const &rhs) { /* NOLINT */ \
+        return result_quantity<Unit>{static_cast<result_quantity<Unit>::value_type>(lhs.value() operator_type rhs.value())}; /* NOLINT */             \
     }
 
 // NOLINTNEXTLINE
-#define CPPUTILS_DEFINE_DERIVED_QUANTITY_SIMMETRIC_OPERATION(result_quantity, lhs_quantity, operator_type, rhs_quantity)            \
-    CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(result_quantity, lhs_quantity, operator_type, hs_quantity)                           \
-    [[nodiscard]] constexpr result_quantity operator operator_type(rhs_quantity const &rhs, lhs_quantity const &lhs) { /* NOLINT */ \
-        return result_quantity{static_cast<result_quantity::value_type>(rhs.value() operator_type lhs.value())}; /* NOLINT */       \
+#define CPPUTILS_DEFINE_DERIVED_QUANTITY_SIMMETRIC_OPERATION(result_quantity, lhs_quantity, operator_type, rhs_quantity)                              \
+    CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(result_quantity, lhs_quantity, operator_type, hs_quantity)                                             \
+    template <typename Unit>                                                                                                                          \
+    [[nodiscard]] constexpr result_quantity<Unit> operator operator_type(rhs_quantity<Unit> const &rhs, lhs_quantity<Unit> const &lhs) { /* NOLINT */ \
+        return result_quantity<Unit>{static_cast<result_quantity<Unit>::value_type>(rhs.value() operator_type lhs.value())}; /* NOLINT */             \
     }
 
 
@@ -47,95 +50,127 @@ CPPUTILS_DEFINE_QUANTITY_TRAITS(length, Length, quantity_tags::Length_Tag);
 CPPUTILS_DEFINE_QUANTITY_TRAITS(time, Time, quantity_tags::Time_Tag);
 CPPUTILS_DEFINE_QUANTITY_TRAITS(velocity, Velocity, quantity_tags::Velocity_Tag);
 
+namespace detail {
+    template <typename Unit>
+    inline constexpr auto g_kelvin_reference = static_cast<Unit>(273.15);
 
-template <auto ToBase, auto FromBase>
-using temperature = quantity<FromBase, ToBase, f64, quantity_tags::Temp_Tag>;
+    template <typename Unit>
+    inline constexpr auto g_mile_reference = static_cast<Unit>(1609.344);
 
-using kelvin = temperature<std::identity{}, std::identity{}>;
+    inline constexpr auto celsius_to_kelvin = []<typename Unit>(Unit celsius_) -> Unit { return celsius_ + g_kelvin_reference<Unit>; };
+    inline constexpr auto kelvin_to_celsius = []<typename Unit>(Unit kelvin_) -> Unit { return kelvin_ - g_kelvin_reference<Unit>; };
 
-using celsius = temperature<[](f64 celsius_) -> f64 { return celsius_ + detail::g_kelvin_reference; },
-                            [](f64 kelvin_) -> f64 { return kelvin_ - detail::g_kelvin_reference; }>;
+    inline constexpr auto fahrenheit_to_kelvin = []<typename Unit>(Unit fah) { return (fah - static_cast<Unit>(32)) * static_cast<Unit>(5.0 / 9.0) + g_kelvin_reference<Unit>; };  // NOLINT
+    inline constexpr auto kelvin_to_fahrenheit = []<typename Unit>(Unit kel) { return (kel - g_kelvin_reference<Unit>)*static_cast<Unit>(9.0 / 5.0) + static_cast<Unit>(32); };  // NOLINT
+}  // namespace detail
 
-using fahrenheit = temperature<[](f64 fah) { return (fah - f64{32.0}) * f64{5.0 / 9.0} + detail::g_kelvin_reference; },  // NOLINT
-                               [](f64 kel) { return (kel - detail::g_kelvin_reference) * f64{9.0 / 5.0} + f64{32.0}; }>;  // NOLINT
+template <auto ToBase, auto FromBase, typename Unit>
+using temperature = quantity<ToBase, FromBase, Unit, quantity_tags::Temp_Tag>;
 
+template <typename Unit = f64>
+using kelvin = temperature<std::identity{}, std::identity{}, Unit>;
 
-template <auto ToBase, auto FromBase>
-using length = quantity<ToBase, FromBase, f64, quantity_tags::Length_Tag>;
+template <typename Unit = f64>
+using celsius = temperature<detail::celsius_to_kelvin, detail::kelvin_to_celsius, Unit>;
 
-using meter = length<std::identity{}, std::identity{}>;
-
-using kilometer = length<[](f64 km) { return km * f64{1000.0}; },  // NOLINT
-                         [](f64 m) { return m / f64{1000.0}; }>;  // NOLINT
-
-using mile = length<[](f64 mi) { return mi * detail::g_mile_reference; },
-                    [](f64 m) { return m / detail::g_mile_reference; }>;
-
-
-template <auto ToBase, auto FromBase>
-using time = quantity<ToBase, FromBase, f64, quantity_tags::Time_Tag>;
-
-using milliseconds = time<[](f64 ms) { return ms / f64{1000.}; }, [](f64 sec) { return sec * f64{1000.}; }>;  // NOLINT
-using seconds = time<std::identity{}, std::identity{}>;
-using minutes = time<[](f64 min) { return min * f64{60}; }, [](f64 sec) { return sec / f64{60}; }>;  // NOLINT
-using hours = time<[](f64 hrs) { return hrs * f64{60 * 60}; }, [](f64 sec) { return sec / f64{60 * 60}; }>;  // NOLINT
-
-template <auto ToBase, auto FromBase>
-using velocity = quantity<ToBase, FromBase, f64, quantity_tags::Velocity_Tag>;
-
-using meters_per_second = velocity<std::identity{}, std::identity{}>;
-using kilometers_per_hour = velocity<[](f64 kmph) { return kmph / f64{3.6}; }, [](f64 mps) { return mps * f64{3.6}; }>;  // NOLINT
+template <typename Unit = f64>
+using fahrenheit = temperature<detail::fahrenheit_to_kelvin, detail::kelvin_to_fahrenheit, Unit>;
 
 
-CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(meters_per_second, meter, *, seconds)
-CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(kilometers_per_hour, kilometer, *, hours)
+template <auto ToBase, auto FromBase, typename Unit>
+using length = quantity<ToBase, FromBase, Unit, quantity_tags::Length_Tag>;
+
+template <typename Unit = f64>
+using meter = length<std::identity{}, std::identity{}, Unit>;
+
+template <typename Unit = f64>
+using kilometer = length<[](Unit km) { return km * static_cast<Unit>(1000); },  // NOLINT
+                         [](Unit m) { return m / static_cast<Unit>(1000); },  // NOLINT
+                         Unit>;
+
+template <typename Unit = f64>
+using mile = length<[](Unit mi) { return mi * detail::g_mile_reference<Unit>; },
+                    [](Unit m) { return m / detail::g_mile_reference<Unit>; },
+                    Unit>;
+
+
+template <auto ToBase, auto FromBase, typename Unit>
+using time = quantity<ToBase, FromBase, Unit, quantity_tags::Time_Tag>;
+
+template <typename Unit = f64>
+using milliseconds = time<[](Unit ms) { return ms / static_cast<Unit>(1000); }, [](Unit sec) { return sec * static_cast<Unit>(1000); }, Unit>;  // NOLINT
+
+template <typename Unit = f64>
+using seconds = time<std::identity{}, std::identity{}, Unit>;
+
+template <typename Unit = f64>
+using minutes = time<[](Unit min) { return min * static_cast<Unit>(60); }, [](Unit sec) { return sec / static_cast<Unit>(60); }, Unit>;  // NOLINT
+
+template <typename Unit = f64>
+using hours = time<[](Unit hrs) { return hrs * static_cast<Unit>(60 * 60); }, [](Unit sec) { return sec / static_cast<Unit>(60 * 60); }, Unit>;  // NOLINT
+
+template <auto ToBase, auto FromBase, typename Unit>
+using velocity = quantity<ToBase, FromBase, Unit, quantity_tags::Velocity_Tag>;
+
+template <typename Unit = f64>
+using meters_per_second = velocity<std::identity{}, std::identity{}, Unit>;
+
+template <typename Unit = f64>
+using kilometers_per_hour = velocity<[](Unit kmph) { return kmph / static_cast<Unit>(3.6); }, [](Unit mps) { return mps * static_cast<Unit>(3.6); }, Unit>;  // NOLINT
+
+
+// CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(meters_per_second, meter, /, seconds)
+
+// CPPUTILS_DEFINE_DERIVED_QUANTITY_OPERATION(kilometers_per_hour, kilometer, /, hours)
+
 
 namespace literals {
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(kelvin, _k, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(celsius, _deg, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(fahrenheit, _fah, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(kelvin<f64>, _k, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(celsius<f64>, _deg, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(fahrenheit<f64>, _fah, long double)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(kelvin, _k, unsigned long long int)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(celsius, _deg, unsigned long long int)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(fahrenheit, _fah, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(kelvin<f64>, _k, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(celsius<f64>, _deg, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(fahrenheit<f64>, _fah, unsigned long long int)
 
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(meter, _m, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometer, _km, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(mile, _mi, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(meter<f64>, _m, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometer<f64>, _km, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(mile<f64>, _mi, long double)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(meter, _m, unsigned long long int)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometer, _km, unsigned long long int)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(mile, _mi, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(meter<f64>, _m, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometer<f64>, _km, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(mile<f64>, _mi, unsigned long long int)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds, _msec, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds, _msec, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds<f64>, _msec, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds<f64>, _msec, unsigned long long int)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds, _sec, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds, _sec, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds<f64>, _sec, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(seconds<f64>, _sec, unsigned long long int)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(minutes, _min, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(minutes, _min, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(minutes<f64>, _min, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(minutes<f64>, _min, unsigned long long int)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(hours, _hrs, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(hours, _hrs, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(hours<f64>, _hrs, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(hours<f64>, _hrs, unsigned long long int)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(meters_per_second, _mps, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(meters_per_second, _mps, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(meters_per_second<f64>, _mps, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(meters_per_second<f64>, _mps, unsigned long long int)
 
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometers_per_hour, _kmph, long double)
-    CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometers_per_hour, _kmph, unsigned long long int)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometers_per_hour<f64>, _kmph, long double)
+    // CPPULTILS_DEFINE_QUANTITY_LITERAL(kilometers_per_hour<f64>, _kmph, unsigned long long int)
 }  // namespace literals
 
-template <typename Time>
-[[nodiscard]] constexpr auto as_chrono(Time t) {
-    if constexpr (std::is_same_v<Time, milliseconds>) {
+template <auto ToBase, auto FromBase, typename Unit>
+[[nodiscard]] constexpr auto as_chrono(time<ToBase, FromBase, Unit> t) {
+    using time_type = time<ToBase, FromBase, Unit>;
+    if constexpr (std::is_same_v<time_type, milliseconds<Unit>>) {
         return std::chrono::milliseconds{static_cast<std::chrono::milliseconds::rep>(t.value())};
-    } else if constexpr (std::is_same_v<Time, seconds>) {
+    } else if constexpr (std::is_same_v<time_type, seconds<Unit>>) {
         return std::chrono::seconds{static_cast<std::chrono::seconds::rep>(t.value())};
-    } else if constexpr (std::is_same_v<Time, minutes>) {
+    } else if constexpr (std::is_same_v<time_type, minutes<Unit>>) {
         return std::chrono::minutes{static_cast<std::chrono::minutes::rep>(t.value())};
-    } else if constexpr (std::is_same_v<Time, hours>) {
+    } else if constexpr (std::is_same_v<time_type, hours<Unit>>) {
         return std::chrono::hours{static_cast<std::chrono::hours::rep>(t.value())};
     }
 }

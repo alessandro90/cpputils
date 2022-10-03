@@ -3,7 +3,7 @@
 
 #include "../internal/adaptors.hpp"
 #include "../internal/iter_utils.hpp"
-#include "../traits/cpputils_concepts.hpp"
+#include "../meta/traits.hpp"
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
