@@ -114,6 +114,7 @@ public:
     }
 
     void stop() {
+        assert(m_active);
         m_time_counter.stop();
         m_active = false;
         m_logger.get()[m_message] = m_time_counter.delta();
