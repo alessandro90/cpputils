@@ -1,6 +1,7 @@
 #ifndef CPPUTILS_TRAITS_HPP
 #define CPPUTILS_TRAITS_HPP
 
+#include <chrono>
 #include <concepts>
 #include <type_traits>
 
@@ -60,7 +61,27 @@ namespace tl {
             typename T::type;
         };
 }  // namespace tl
-}  // namespace cpputils
 
+template <typename>
+struct is_duration : std::false_type {};
+
+template <typename Rep, typename Period>
+struct is_duration<std::chrono::duration<Rep, Period>> : std::true_type {};
+
+template <typename D>
+inline constexpr auto is_duration_v = is_duration<D>::value;
+
+template <typename D>
+concept duration = is_duration_v<D>;
+
+template <typename T>
+concept pair_like =
+    requires (T t) {
+        t.first;
+        t.second;
+    }
+    && std::is_member_object_pointer_v<std::remove_cvref_t<decltype(&std::remove_cvref_t<T>::first)>>
+    && std::is_member_object_pointer_v<std::remove_cvref_t<decltype(&std::remove_cvref_t<T>::second)>>;
+}  // namespace cpputils
 
 #endif
