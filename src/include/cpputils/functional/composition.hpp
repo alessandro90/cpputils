@@ -55,7 +55,7 @@ namespace detail {
     struct composer<void> {
         constexpr auto operator*(auto &&g) const {
             // clang-format off
-            return make_composer([g_ = FWD(g)](auto &&...xs) requires std::invocable<decltype(g), decltype(FWD(xs))...> {
+            return make_composer([g_ = FWD(g)](auto &&...xs) requires std::invocable<decltype(g), decltype(xs)...> {
                 return std::invoke(g_, FWD(xs)...);
             });
             // clang-format on

@@ -19,6 +19,8 @@
 #include <utility>
 #include <variant>
 
+// NOLINTNEXTLINE
+#define FWD(x) std::forward<decltype(x)>(x)
 
 namespace cpputils::benchmark {
 
@@ -78,7 +80,7 @@ public:
         m_stop = std::chrono::steady_clock::now();
     }
 
-    [[nodiscard]] auto delta() const {
+    [[nodiscard]] duration auto delta() const {
         return m_stop - m_start;
     }
 
@@ -119,6 +121,21 @@ public:
 
     Logger const &logger() const noexcept {
         return m_logger;
+    }
+
+    duration auto benchmark_this(std::string msg, auto &&f, auto &&...args)
+        requires std::invocable<decltype(f), decltype(args)...>
+    {
+#define BENCHMARK_FUNCTION_CALL() std::invoke(FWD(f), FWD(args)...) /* NOLINT */
+        start(std::move(msg));
+        if constexpr (std::is_same_v<decltype(BENCHMARK_FUNCTION_CALL()), void>) {
+            BENCHMARK_FUNCTION_CALL();
+        } else {
+            [[maybe_unused]] volatile auto const r = BENCHMARK_FUNCTION_CALL();
+        }
+        stop();
+#undef BENCHMARK_FUNCTION_CALL
+        return m_time_counter.delta();
     }
 
     class scoped {
@@ -463,4 +480,7 @@ private:
         m_formatter{};
 };
 }  // namespace cpputils::benchmark
+
+#undef FWD
+
 #endif
