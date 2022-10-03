@@ -112,7 +112,7 @@ inline constexpr void apply_or_else(auto &&f, auto &&otherwise, optional_like au
     }
 }
 
-inline constexpr auto zip(optional_like auto &&...opts) {
+[[nodiscard]] inline constexpr auto zip(optional_like auto &&...opts) {
     using Tuple_t = std::tuple<detail::reference_or_value<decltype(FWD(opts).value())>...>;
     using Ret_t = std::optional<Tuple_t>;
     if ((opts && ...)) {
