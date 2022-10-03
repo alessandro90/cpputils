@@ -28,16 +28,36 @@ template <typename Rep, typename Period>
 struct is_duration<std::chrono::duration<Rep, Period>> : std::true_type {};
 
 template <typename D>
-concept duration = is_duration<D>::value;
+inline constexpr auto is_duration_v = is_duration<D>::value;
+
+template <typename D>
+concept duration = is_duration_v<D>;
+
+template <typename T>
+concept pair_like =
+    requires (T t) {
+        t.first;
+        t.second;
+    }
+    && std::is_member_object_pointer_v<std::remove_cvref_t<decltype(&std::remove_cvref_t<T>::first)>>
+    && std::is_member_object_pointer_v<std::remove_cvref_t<decltype(&std::remove_cvref_t<T>::second)>>;
+
+template <typename V>
+concept logger_range_value =
+    pair_like<V>
+    && std::same_as<std::remove_cvref_t<decltype(std::declval<V>().first)>, std::string>
+    && duration<std::remove_cvref_t<decltype(std::declval<V>().second)>>;
 
 template <typename L>
 concept time_logger =
-    requires (L logger) {
-        logger[std::string{}] = std::declval<typename L::mapped_type>();
-    }
-    && std::movable<L>
-    && std::copyable<L>
-    && duration<typename L::mapped_type>;
+    logger_range_value<std::ranges::range_reference_t<L>>
+    && requires (L logger) {
+           logger[std::string{}] = std::declval<typename L::mapped_type>();
+       }  //
+    && std::movable<L>  //
+    && std::copyable<L>  //
+    && duration<typename L::mapped_type>  //
+    && std::ranges::input_range<L>;
 
 template <typename C>
 concept time_counter =
@@ -48,9 +68,16 @@ concept time_counter =
            { c.delta() } -> duration;
        };
 
+template <typename Counter, typename Logger>
+concept time_counter_compatible_delta =
+    time_logger<Logger>
+    && requires (Counter c) {
+           { c.delta() } -> std::convertible_to<typename Logger::mapped_type>;
+       };
+
 template <time_logger Logger>
 requires std::default_initializable<Logger>
-Logger &make_static_logger() {
+Logger &get_static_logger() {
     static Logger logger{};
     return logger;
 }
@@ -80,20 +107,18 @@ private:
     std::chrono::time_point<Clock> m_stop{};
 };
 
-template <duration D>
-using default_container = std::unordered_map<std::string, D>;
-
 template <duration D = default_duration>
-using default_logger = default_container<D>;
+using default_logger = std::unordered_map<std::string, D>;
 
 template <time_logger Logger = default_logger<>, time_counter TimeCounter = default_counter<>>
+requires time_counter_compatible_delta<TimeCounter, Logger>
 class timer {
 public:
     using logger_t = Logger;
     using time_counter_t = TimeCounter;
 
     timer()
-        : m_logger{make_static_logger<Logger>()} {}
+        : m_logger{get_static_logger<Logger>()} {}
 
     explicit timer(Logger &logger)
         : m_logger{logger} {}
@@ -143,13 +168,6 @@ private:
     bool m_active{false};
 };
 
-template <typename T>
-concept pair_like =
-    requires (T t) {
-        t.first;
-        t.second;
-    };
-
 template <typename L, typename F>
 concept report_formatter =
     requires (L logger, F f) {
@@ -159,11 +177,6 @@ concept report_formatter =
     } && std::default_initializable<F> && time_logger<L>;
 
 namespace detail {
-    struct local_and_utc {
-        std::optional<std::string> local;
-        std::optional<std::string> utc;
-    };
-
     [[nodiscard]] inline std::optional<std::tm> cpputils_localtime(std::time_t &now_time) {
         auto const *local_time = std::localtime(&now_time);  // NOLINT
         if (local_time == nullptr) { return std::nullopt; }
@@ -176,7 +189,11 @@ namespace detail {
         return *local_time;
     }
 
-    [[nodiscard]] inline local_and_utc today() {
+    [[nodiscard]] inline auto today() {
+        struct local_and_utc {
+            std::optional<std::string> local;
+            std::optional<std::string> utc;
+        };
         auto const time_to_str = transform([](std::tm const &date_time) -> std::optional<std::string> {
             auto const *str = std::asctime(&date_time);  // NOLINT
             auto const *newline = static_cast<char const *>(std::memchr(str, '\n', 25));  // NOLINT See https://en.cppreference.com/w/cpp/chrono/c/asctime for the 25
@@ -186,8 +203,8 @@ namespace detail {
 
         auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-        return {.local = cpputils_localtime(now_time) >> time_to_str,
-                .utc = cpputils_gmtime(now_time) >> time_to_str};
+        return local_and_utc{.local = cpputils_localtime(now_time) >> time_to_str,
+                             .utc = cpputils_gmtime(now_time) >> time_to_str};
     }
 
     template <duration D>
@@ -217,7 +234,7 @@ namespace detail {
 
     // If logger is not sortable, copy the contents into a vector and sort it, otherwise just use logger
     template <time_logger Logger>
-    auto make_sorted(Logger logger) {
+    [[nodiscard]] auto make_sorted(Logger logger) {
         auto const sorter = [](auto const &lhs, auto const &rhs) { return rhs.second < lhs.second; };
         if constexpr (requires { requires std::sortable<std::ranges::iterator_t<Logger>>; }) {
             std::ranges::sort(logger, sorter);
@@ -231,7 +248,9 @@ namespace detail {
         }
     }
 
-    std::string join_with(std::string_view sep, std::ranges::view auto rng) {
+    template <std::ranges::view V>
+    requires std::ranges::input_range<V> && std::same_as<std::remove_cvref_t<std::ranges::range_reference_t<V>>, std::string>
+    [[nodiscard]] std::string join_with(std::string_view sep, V rng) {
         auto const rng_size = std::ranges::size(rng);
         auto iteration = decltype(rng_size){0};
         auto report = std::string{};
@@ -253,9 +272,9 @@ namespace detail {
             static constexpr auto time_unit = detect_time_unit<typename Logger::mapped_type>();
             auto &self = underlying();
             self.start(time_unit);
-            auto sorted = detail::make_sorted(std::move(logger));
+            std::ranges::input_range auto const sorted = detail::make_sorted(std::move(logger));
             auto const time_values = sorted | std::views::transform([](auto const &kv) { return DerivedFormatter::process_data(kv); });
-            auto const records = join_with(self.separator(), std::views::all(time_values));
+            auto const records = join_with(self.separator(), time_values);
             self.m_content += records;
             self.finish();
         }
