@@ -68,17 +68,36 @@ public:
     using Array = std::vector<Object>;
 
     bool parse(std::string_view fcontent) {
+        auto to_parse = fcontent;
         while (!fcontent.empty()) {
             // TODO: A for loop for all the parsers here
-            auto parse_result = parse_object(fcontent);
+            auto const km = split_key_and_remaining(to_parse);
+            if (!km) { return false; }
+            auto const [key, to_parse_after_key] = km.value();
+            auto parse_result = parse_object(to_parse_after_key);
             if (!parse_result) { return false; }  // Invalid json
-            auto &[key_value, remaining] = parse_result.value();
-            fcontent = remaining;
-            if (!key_value) { continue; }
-            m_json_object.push_back(std::move(key_value).value());
+            auto &[value, to_parse_after_value] = parse_result.value();
+            to_parse = to_parse_after_value;
+            if (!value) { continue; }
+            m_json_object.emplace_back(key, std::move(value));
         }
         return true;
     }
+    // For debug of single parsers
+    /*
+    std::optional<key_and_value> parse(std::string_view fcontent) {
+        auto to_parse = fcontent;
+        auto const km = split_key_and_remaining(to_parse);
+        if (!km) { return {}; }
+        auto const [key, to_parse_after_key] = km.value();
+        auto parse_result = parse_null(to_parse_after_key);
+        if (!parse_result) { return {}; }  // Invalid json
+        auto &[value, to_parse_after_value] = parse_result.value();
+        to_parse = to_parse_after_value;
+        if (!value) { return {}; }
+        return key_and_value{key, std::move(value).value()};
+    }
+    */
 
 private:
     using json_value = std::variant<Null, Bool, String, Number, Array, Object>;
@@ -91,7 +110,7 @@ private:
 
     // NOLINTNEXTLINE
     struct parse_result {
-        std::optional<key_and_value> key_value{};
+        std::optional<json_value> value{};
         std::string_view remaining{};
     };
 
@@ -125,17 +144,13 @@ private:
     }
 
     [[nodiscard]] static std::optional<parse_result> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
-        auto const km = split_key_and_remaining(fcontent);
-        if (!km) { return std::nullopt; }
-        auto const [key, remaining] = km.value();
-        if (remaining.size() < keyword.size() + 1 || remaining.substr(0, keyword.size()) != keyword) {
-            return parse_result{.key_value = std::nullopt, .remaining = fcontent};
+        if (fcontent.size() < keyword.size() + 1 || fcontent.substr(0, keyword.size()) != keyword) {
+            return parse_result{.value = std::nullopt, .remaining = fcontent};
         }
-        if (!is_record_end(remaining[keyword.size()])) {
-            return parse_result{.key_value = std::nullopt, .remaining = fcontent};
+        if (!is_record_end(fcontent[keyword.size()])) {
+            return parse_result{.value = std::nullopt, .remaining = fcontent};
         }
-        return parse_result{.key_value = key_and_value{.key = key, .value = keyword_value},
-                            .remaining = remaining.substr(keyword.size())};
+        return parse_result{.value = json_value{keyword_value}, .remaining = fcontent.substr(keyword.size())};
     }
 
     [[nodiscard]] static std::optional<parse_result> parse_object(std::string_view) {
@@ -148,21 +163,18 @@ private:
 
     [[nodiscard]] static std::optional<parse_result> parse_bool(std::string_view fcontent) {
         if (auto parse_true = parse_keyword(fcontent, "true", true);
-            !parse_true || parse_true.value().key_value) {
+            !parse_true || parse_true.value().value) {
             return parse_true;
         }
         return parse_keyword(fcontent, "false", false);
     }
 
     [[nodiscard]] static std::optional<parse_result> parse_string(std::string_view fcontent) {
-        auto const km = split_key_and_remaining(fcontent);
-        if (!km) { return std::nullopt; }
-        auto const [key, remaining] = km.value();
-        if (remaining.empty()) { return std::nullopt; }
-        if (remaining[0] != '"') { return parse_result{.key_value = std::nullopt, .remaining = fcontent}; }
-        if (auto const closing_mark = remaining.find_first_of('"', 1); closing_mark != std::string_view::npos) {
-            return parse_result{.key_value = key_and_value{.key = key, .value = remaining.substr(1, closing_mark - 1U)},  // Skip marks
-                                .remaining = remaining.substr(closing_mark + 1U)};
+        if (fcontent.empty()) { return std::nullopt; }
+        if (fcontent[0] != '"') { return parse_result{.value = std::nullopt, .remaining = fcontent}; }
+        if (auto const closing_mark = fcontent.find_first_of('"', 1); closing_mark != std::string_view::npos) {
+            return parse_result{.value = json_value{fcontent.substr(1, closing_mark - 1U)},  // Skip marks
+                                .remaining = fcontent.substr(closing_mark + 1U)};
         }
         return std::nullopt;
     }
