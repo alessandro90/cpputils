@@ -52,6 +52,14 @@ namespace detail {
     [[nodiscard]] inline std::string_view strip(std::string_view fcontent) {
         return rstrip(lstrip(fcontent));
     }
+
+    [[nodiscard]] bool is_digit(char ch) { return std::isdigit(ch) != 0; }
+
+    [[nodiscard]] inline bool is_number_begin(std::string_view fcontent) {
+        if (fcontent.empty()) { return false; }
+        if (is_digit(fcontent[0])) { return true; }
+        return fcontent.size() > 1 && fcontent[0] == '-' && is_digit(fcontent[1]);
+    }
 }  // namespace detail
 
 class json {
@@ -179,8 +187,31 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] static std::optional<parse_result> parse_number(std::string_view) {
-        return {};
+    [[nodiscard]] static std::optional<parse_result> parse_number(std::string_view fcontent) {
+        if (fcontent.empty() || !detail::is_number_begin(fcontent)) { return std::nullopt; }
+        bool found_dot{false};
+        std::size_t ch_pos{};
+        bool const is_negative = fcontent[0] == '-';
+        if (is_negative) { ++ch_pos; }
+        while (ch_pos < fcontent.size()) {
+            auto const ch = fcontent[ch_pos];
+            if (detail::is_digit(ch)) {
+                ++ch_pos;
+                continue;
+            }
+            if (ch_pos > 0 && ch == '.' && !found_dot) {
+                found_dot = true;
+                ++ch_pos;
+                continue;
+            }
+            bool const is_end = is_record_end(ch);
+            if ((!is_end && !detail::is_digit(ch)) || (found_dot && ch == '.')) { return std::nullopt; }
+            if (is_end) { break; }
+        }
+        if (ch_pos == 0 || (is_negative && ch_pos == 1)) { return std::nullopt; }
+
+        return parse_result{.value = std::stod(std::string(fcontent.substr(0, ch_pos))),
+                            .remaining = fcontent.substr(ch_pos)};
     }
 
     [[nodiscard]] static std::optional<parse_result> parse_array(std::string_view) {
