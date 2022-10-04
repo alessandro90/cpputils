@@ -202,7 +202,7 @@ private:
         auto &[key_value, remaining] = parsed.value();
 
         return parse_result_t{.value = std::make_unique<key_and_value_t>(std::move(key_value)),
-                              .remaining = detail::skip_newline(skip_brace(detail::lstrip(remaining), '}'))};
+                              .remaining = detail::skip_newline(detail::skip_comma(skip_brace(detail::lstrip(remaining), '}')))};
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_null(std::string_view fcontent) {
