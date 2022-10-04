@@ -271,7 +271,7 @@ namespace detail {
             auto &self = underlying();
             self.start(time_unit);
             std::ranges::input_range auto const sorted = detail::make_sorted(std::move(logger));
-            auto const time_values = sorted | std::views::transform([](auto const &kv) { return DerivedFormatter::process_data(kv); });
+            auto const time_values = sorted | std::views::transform([this](auto const &kv) { return underlying().process_data(kv); });
             auto const records = join_with(self.separator(), time_values);
             self.m_content += records;
             self.finish();
@@ -297,24 +297,19 @@ namespace formatters {
 
     private:
         std::string m_content{};
+        std::string m_unit_of_measure{};
 
-        [[nodiscard]] static std::string_view separator() noexcept { return ","; }
+        [[nodiscard]] static std::string_view separator() noexcept { return "\n"; }
 
         void start(std::string_view unit_of_measure) {
-            auto const times = []() {
-                auto const [local_time, utc_time] = detail::today();
-                std::string times_{};
-                if (local_time) { times_ += "local_time," + local_time.value() + ","; }
-                if (utc_time) { times_ += "utc_time," + utc_time.value() + ","; }
-                return times_;
-            }();
-            m_content = times + "time_unit" + "," + unit_of_measure.data() + ",";
+            m_unit_of_measure = std::string{unit_of_measure};
+            m_content = "description,elapsed_time,unit_of_measure\n";
         }
-        [[nodiscard]] static std::string process_data(pair_like auto const kv) {
+        [[nodiscard]] std::string process_data(pair_like auto const kv) const {
             auto const elapsed_time = std::to_string(kv.second.count());
-            return kv.first + "," + elapsed_time;
+            return kv.first + "," + elapsed_time + "," + m_unit_of_measure;
         }
-        void finish() { m_content += "\n"; }
+        void finish() { m_content += '\n'; }
     };
 
     struct json : detail::base_formatter<json> {
