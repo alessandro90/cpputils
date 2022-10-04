@@ -62,7 +62,7 @@ private:
 public:
     struct Null {};
     using Bool = bool;
-    using String = std::string;
+    using String = std::string_view;
     using Number = double;
     using Object = std::unique_ptr<key_and_value>;
     using Array = std::vector<Object>;
@@ -102,7 +102,9 @@ private:
 
     object_representation m_json_object{};
 
-    [[nodiscard]] static bool is_record_end(char ch) noexcept { return detail::is_newline(ch) || ch == ','; }
+    [[nodiscard]] static bool is_record_end(char ch) noexcept {
+        return detail::is_newline(ch) || ch == ',' || ch == ' ' || ch == '}';
+    }
 
     [[nodiscard]] static std::optional<key_and_remaining> split_key_and_remaining(std::string_view fcontent) {
         auto const colon_pos = fcontent.find(':');
@@ -143,8 +145,17 @@ private:
         return parse_keyword(fcontent, "false", false);
     }
 
-    [[nodiscard]] static std::optional<parse_result> parse_string(std::string_view) {
-        return {};
+    [[nodiscard]] static std::optional<parse_result> parse_string(std::string_view fcontent) {
+        auto const km = split_key_and_remaining(fcontent);
+        if (!km) { return std::nullopt; }
+        auto const [key, remaining] = km.value();
+        if (remaining.empty()) { return std::nullopt; }
+        if (remaining[0] != '"') { return parse_result{.key_value = std::nullopt, .remaining = fcontent}; }
+        if (auto const closing_mark = remaining.find_first_of('"', 1); closing_mark != std::string_view::npos) {
+            return parse_result{.key_value = key_and_value{.key = key, .value = remaining.substr(1, closing_mark - 1U)},  // Skip marks
+                                .remaining = remaining.substr(closing_mark + 1U)};
+        }
+        return std::nullopt;
     }
 
     [[nodiscard]] static std::optional<parse_result> parse_number(std::string_view) {
