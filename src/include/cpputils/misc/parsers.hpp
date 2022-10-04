@@ -1,6 +1,7 @@
 #ifndef CPPUTILS_PARSERS_HPP
 #define CPPUTILS_PARSERS_HPP
 
+#include <algorithm>
 #include <charconv>
 #include <concepts>
 #include <cstddef>
@@ -230,14 +231,13 @@ private:
         if (!detail::is_number_begin(fcontent)) {
             return parse_result_t{.value = std::nullopt, .remaining = fcontent};
         }
-        std::size_t ch_pos{};
-        while (ch_pos < fcontent.size() && !is_record_end(fcontent[ch_pos])) {
-            ++ch_pos;
-        }
-        auto const num = detail::sv_to_number<Number>(fcontent.substr(0, ch_pos));
-        if (!num || (ch_pos > 0 && fcontent[ch_pos - 1U] == '.')) { return std::nullopt; }
+        auto const last = std::ranges::find_if(fcontent, is_record_end);
+        if (last == fcontent.end()) { return std::nullopt; }
+        if (last != fcontent.begin() && *std::prev(last) == '.') { return std::nullopt; }
+        auto const num = detail::sv_to_number<Number>(std::string_view{fcontent.begin(), last});
+        if (!num) { return std::nullopt; }
         return parse_result_t{.value = num.value(),
-                              .remaining = detail::skip_newline(detail::skip_comma(fcontent.substr(ch_pos)))};
+                              .remaining = detail::skip_newline(detail::skip_comma(std::string_view(last, fcontent.end())))};
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_array(std::string_view) {
