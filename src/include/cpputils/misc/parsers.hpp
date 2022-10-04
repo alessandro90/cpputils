@@ -228,33 +228,15 @@ private:
 
     [[nodiscard]] static std::optional<parse_result_t> parse_number(std::string_view fcontent) {
         if (!detail::is_number_begin(fcontent)) {
-            return std::nullopt;
+            return parse_result_t{.value = std::nullopt, .remaining = fcontent};
         }
-        bool const is_negative = fcontent[0] == '-';
         std::size_t ch_pos{};
-        if (is_negative) { ++ch_pos; }
-        bool found_dot{false};
-        while (ch_pos < fcontent.size()) {
-            auto const ch = fcontent[ch_pos];
-            if (ch == '.') {
-                if (found_dot) { return std::nullopt; }
-                found_dot = true;
-                ++ch_pos;
-                continue;
-            }
-            if (detail::is_digit(ch)) {
-                ++ch_pos;
-                continue;
-            }
-            if (is_record_end(ch)) { break; }
-            return std::nullopt;
+        while (ch_pos < fcontent.size() && !is_record_end(fcontent[ch_pos])) {
+            ++ch_pos;
         }
-        // 3 error cases: 1. nothing to parse; 2. just a minus sigh; 3. last char is a dot (missing number)
-        if (ch_pos == 0 || (is_negative && ch_pos == 1) || (fcontent[ch_pos - 1U] == '.')) {
-            return std::nullopt;
-        }
-
-        return parse_result_t{.value = detail::sv_to_number<Number>(fcontent.substr(0, ch_pos)).value_or(0.0),
+        auto const num = detail::sv_to_number<Number>(fcontent.substr(0, ch_pos));
+        if (!num || (ch_pos > 0 && fcontent[ch_pos - 1U] == '.')) { return std::nullopt; }
+        return parse_result_t{.value = num.value(),
                               .remaining = detail::skip_newline(detail::skip_comma(fcontent.substr(ch_pos)))};
     }
 
