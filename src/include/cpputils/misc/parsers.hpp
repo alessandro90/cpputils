@@ -16,18 +16,25 @@
 
 namespace cpputils::parsers {
 namespace detail {
-    [[nodiscard]] inline constexpr bool is_space(char ch) noexcept {
-        return ch == ' ' || ch == '\t';
+    [[nodiscard]] constexpr bool char_is(char ch, auto... chars) noexcept
+        requires std::conjunction_v<std::is_same<char, decltype(chars)>...>
+    {
+        return ((ch == chars) || ...);
     }
 
-    [[nodiscard]] inline bool is_newline(char ch) noexcept { return ch == '\n' || ch == '\r'; }
+    [[nodiscard]] inline constexpr bool is_space(char ch) noexcept {
+        return char_is(ch, ' ', '\t');
+    }
 
-    [[nodiscard]] inline std::string_view skip_newline(std::string_view s) {
+    [[nodiscard]] inline bool is_newline(char ch) noexcept {
+        return char_is(ch, '\n', '\r');
+    }
+
+    [[nodiscard]] inline std::string_view skip_newline(std::string_view s) noexcept {
         if (s.empty()) { return s; }
-        return s.substr(
-            static_cast<std::size_t>(s[0] == '\n')
-            + static_cast<std::size_t>(s[0] == '\r')
-            + static_cast<std::size_t>(s[1] == '\r'));
+        return s.substr(static_cast<std::size_t>(s[0] == '\n')
+                        + static_cast<std::size_t>(s[0] == '\r')
+                        + static_cast<std::size_t>(s[1] == '\r'));
     }
 
     [[nodiscard]] inline std::string_view skip_comma(std::string_view s) {
@@ -66,8 +73,9 @@ namespace detail {
     template <std::floating_point NumType>
     [[nodiscard]] std::optional<NumType> sv_to_number(std::string_view v) {
         NumType n{};
-        auto const conversion_result = std::from_chars(v.begin(), v.end(), n);
-        if (conversion_result.ptr == v.end()) { return n; }
+        if (auto const conv = std::from_chars(v.begin(), v.end(), n); conv.ptr == v.end()) {
+            return n;
+        }
         return std::nullopt;
     }
 }  // namespace detail
@@ -75,7 +83,7 @@ namespace detail {
 class json {
 private:
     struct key_and_value_t;
-    using object_representation_t = std::vector<key_and_value_t>;
+    using json_representation_t = std::vector<key_and_value_t>;
 
 public:
     struct Null {};
@@ -86,12 +94,12 @@ public:
     using Array = std::vector<Object>;
 
     struct parsed_json_t {
-        object_representation_t m_object_representation;
+        json_representation_t m_object_representation;
     };
 
     [[nodiscard]] static std::optional<parsed_json_t> parse(std::string_view fcontent) {
         if (fcontent.empty()) { return std::nullopt; }
-        object_representation_t json_object{};
+        json_representation_t json_object{};
         auto to_parse = detail::lstrip(detail::skip_newline(skip_brace(detail::lstrip(fcontent), '{')));
         while (!to_parse.empty() && to_parse[0] != '}') {
             auto parse_output = traverse_parsers(to_parse);
@@ -100,8 +108,8 @@ public:
             to_parse = detail::lstrip(remaining_chars);
             json_object.push_back(std::move(parsed_object));
         }
-        if (!to_parse.empty() && to_parse[0] == '}') { return parsed_json_t{std::move(json_object)}; }
-        return std::nullopt;
+        if (to_parse.empty() || to_parse[0] != '}') { return std::nullopt; }
+        return parsed_json_t{std::move(json_object)};
     }
 
 private:
@@ -130,7 +138,7 @@ private:
     };
 
     [[nodiscard]] static bool is_record_end(char ch) noexcept {
-        return detail::is_newline(ch) || ch == ',' || ch == ' ' || ch == '}';
+        return detail::is_newline(ch) || detail::char_is(ch, ',', ' ', '}');
     }
 
     [[nodiscard]] static std::optional<std::string_view> strip_marks(std::string_view v) {
@@ -152,7 +160,8 @@ private:
         if (!maybe_key) { return std::nullopt; }
         auto const key = maybe_key.value();
         if (key.size() + 1U == fcontent.size()) { return std::nullopt; }
-        auto const remaining = detail::strip(fcontent.substr(colon_pos + 1U));
+        auto const remaining = detail::lstrip(fcontent.substr(colon_pos + 1U));
+        if (remaining.empty()) { return std::nullopt; }
         return key_and_remaining_t{.key = key, .remaining = remaining};
     }
 
@@ -174,19 +183,15 @@ private:
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
-        if (fcontent.size() < keyword.size() + 1 || fcontent.substr(0, keyword.size()) != keyword) {
-            return parse_result_t{.value = std::nullopt, .remaining = fcontent};
-        }
-        if (!is_record_end(fcontent[keyword.size()])) {
+        if (fcontent.size() < keyword.size() + 1 || fcontent.substr(0, keyword.size()) != keyword || !is_record_end(fcontent[keyword.size()])) {
             return parse_result_t{.value = std::nullopt, .remaining = fcontent};
         }
         return parse_result_t{.value = json_value_t{keyword_value},
-                              .remaining = detail::skip_comma(detail::skip_newline(fcontent.substr(keyword.size())))};
+                              .remaining = detail::skip_newline(detail::skip_comma(fcontent.substr(keyword.size())))};
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_object(std::string_view fcontent) {
-        fcontent = detail::lstrip(fcontent);
-        if (fcontent.empty()) { return std::nullopt; }
+        // fcontent = detail::lstrip(fcontent);
         if (fcontent[0] != '{') { return parse_result_t{.value = std::nullopt, .remaining = fcontent}; }
 
         fcontent = detail::lstrip(detail::skip_newline(skip_brace(fcontent, '{')));
@@ -213,40 +218,42 @@ private:
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_string(std::string_view fcontent) {
-        if (fcontent.empty()) { return std::nullopt; }
         if (fcontent[0] != '"') { return parse_result_t{.value = std::nullopt, .remaining = fcontent}; }
         if (auto const closing_mark = fcontent.find_first_of('"', 1); closing_mark != std::string_view::npos) {
             return parse_result_t{.value = json_value_t{fcontent.substr(1, closing_mark - 1U)},  // Skip marks
-                                  .remaining = detail::skip_comma(detail::skip_newline(fcontent.substr(closing_mark + 1U)))};
+                                  .remaining = detail::skip_newline(detail::skip_comma(fcontent.substr(closing_mark + 1U)))};
         }
         return std::nullopt;
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_number(std::string_view fcontent) {
-        if (fcontent.empty() || !detail::is_number_begin(fcontent)) { return std::nullopt; }
-        bool found_dot{false};
-        std::size_t ch_pos{};
+        if (!detail::is_number_begin(fcontent)) {
+            return std::nullopt;
+        }
         bool const is_negative = fcontent[0] == '-';
+        std::size_t ch_pos{};
         if (is_negative) { ++ch_pos; }
+        bool found_dot{false};
         while (ch_pos < fcontent.size()) {
             auto const ch = fcontent[ch_pos];
             if (detail::is_digit(ch)) {
                 ++ch_pos;
                 continue;
             }
-            if (ch_pos > 0 && ch == '.' && !found_dot) {
+            bool const is_dot = ch == '.';
+            if (ch_pos > 0 && is_dot && !found_dot) {
                 found_dot = true;
                 ++ch_pos;
                 continue;
             }
             bool const is_end = is_record_end(ch);
-            if ((!is_end && !detail::is_digit(ch)) || (found_dot && ch == '.')) { return std::nullopt; }
+            if ((!is_end && !detail::is_digit(ch)) || (found_dot && is_dot)) { return std::nullopt; }
             if (is_end) { break; }
         }
         if (ch_pos == 0 || (is_negative && ch_pos == 1)) { return std::nullopt; }
 
         return parse_result_t{.value = detail::sv_to_number<Number>(fcontent.substr(0, ch_pos)).value_or(0.0),
-                              .remaining = detail::skip_comma(detail::skip_newline(fcontent.substr(ch_pos)))};
+                              .remaining = detail::skip_newline(detail::skip_comma(fcontent.substr(ch_pos)))};
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_array(std::string_view) {
@@ -254,13 +261,13 @@ private:
     }
 
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
-    inline static constexpr std::optional<parse_result_t> (*s_parsers[])(std::string_view) = {
-        &json::parse_object,
-        &json::parse_null,
-        &json::parse_bool,
-        &json::parse_string,
-        &json::parse_number,
-        &json::parse_array};
+    inline static constexpr std::optional<parse_result_t> (*s_parsers[])(std::string_view) =
+        {&json::parse_object,
+         &json::parse_null,
+         &json::parse_bool,
+         &json::parse_string,
+         &json::parse_number,
+         &json::parse_array};
 };
 }  // namespace cpputils::parsers
 

@@ -35,6 +35,7 @@ ${TEST_PATH}/operator_sections_test.cpp
 ${TEST_PATH}/container_views_test.cpp
 ${TEST_PATH}/lazy_test.cpp
 ${TEST_PATH}/benchmark_test.cpp
+${TEST_PATH}/parser_test.cpp
 )
 
 add_executable(cpputils_test ${TEST_FILES})
