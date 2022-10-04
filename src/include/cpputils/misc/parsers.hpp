@@ -106,13 +106,22 @@ private:
         return detail::is_newline(ch) || ch == ',' || ch == ' ' || ch == '}';
     }
 
+    [[nodiscard]] static std::optional<std::string_view> strip_marks(std::string_view v) {
+        if (v.size() < 3 || !v.starts_with('"') || !v.ends_with('"')) { return std::nullopt; }
+        v.remove_prefix(1);
+        v.remove_suffix(1);
+        return v;
+    }
+
     [[nodiscard]] static std::optional<key_and_remaining> split_key_and_remaining(std::string_view fcontent) {
         auto const colon_pos = fcontent.find(':');
         if (colon_pos == std::string_view::npos) { return std::nullopt; }
-        auto const key = fcontent.substr(0, colon_pos);
+        auto const maybe_key = strip_marks(detail::strip(fcontent.substr(0, colon_pos)));
+        if (!maybe_key) { return std::nullopt; }
+        auto const key = maybe_key.value();
         if (key.size() + 1U == fcontent.size()) { return std::nullopt; }
-        auto const remaining = fcontent.substr(colon_pos + 1U);
-        return key_and_remaining{.key = detail::strip(key), .remaining = detail::strip(remaining)};
+        auto const remaining = detail::strip(fcontent.substr(colon_pos + 1U));
+        return key_and_remaining{.key = key, .remaining = remaining};
     }
 
     [[nodiscard]] static std::optional<parse_result> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
