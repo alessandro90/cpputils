@@ -75,21 +75,26 @@ public:
     using Object = std::unique_ptr<key_and_value>;
     using Array = std::vector<Object>;
 
-    bool parse(std::string_view fcontent) {
+    struct parsed_json {
+        object_representation m_object_representation;
+    };
+
+    [[nodiscard]] static std::optional<parsed_json> parse(std::string_view fcontent) {
+        object_representation json_object{};
         auto to_parse = fcontent;
         while (!fcontent.empty()) {
             // TODO: A for loop for all the parsers here
-            auto const km = split_key_and_remaining(to_parse);
-            if (!km) { return false; }
-            auto const [key, to_parse_after_key] = km.value();
+            auto const key_and_to_parse = split_key_and_remaining(to_parse);
+            if (!key_and_to_parse) { return std::nullopt; }
+            auto const [key, to_parse_after_key] = key_and_to_parse.value();
             auto parse_result = parse_object(to_parse_after_key);
-            if (!parse_result) { return false; }  // Invalid json
+            if (!parse_result) { return std::nullopt; }  // Invalid json
             auto &[value, to_parse_after_value] = parse_result.value();
             to_parse = to_parse_after_value;
             if (!value) { continue; }
-            m_json_object.emplace_back(key, std::move(value));
+            json_object.emplace_back(key, std::move(value));
         }
-        return true;
+        return parsed_json{std::move(json_object)};
     }
     // For debug of single parsers
     /*
@@ -126,8 +131,6 @@ private:
         std::string_view key;
         std::string_view remaining;
     };
-
-    object_representation m_json_object{};
 
     [[nodiscard]] static bool is_record_end(char ch) noexcept {
         return detail::is_newline(ch) || ch == ',' || ch == ' ' || ch == '}';
