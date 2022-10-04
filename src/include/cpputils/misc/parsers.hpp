@@ -2,6 +2,7 @@
 #define CPPUTILS_PARSERS_HPP
 
 #include <charconv>
+#include <concepts>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -54,7 +55,7 @@ namespace detail {
         return rstrip(lstrip(fcontent));
     }
 
-    [[nodiscard]] bool is_digit(char ch) { return std::isdigit(ch) != 0; }
+    [[nodiscard]] inline bool is_digit(char ch) { return std::isdigit(ch) != 0; }
 
     [[nodiscard]] inline bool is_number_begin(std::string_view fcontent) {
         if (fcontent.empty()) { return false; }
@@ -62,8 +63,9 @@ namespace detail {
         return fcontent.size() > 1 && fcontent[0] == '-' && is_digit(fcontent[1]);
     }
 
-    [[nodiscard]] std::optional<double> to_double(std::string_view v) {
-        double n{};
+    template <std::floating_point NumType>
+    [[nodiscard]] std::optional<NumType> sv_to_number(std::string_view v) {
+        NumType n{};
         auto const conversion_result = std::from_chars(v.begin(), v.end(), n);
         if (conversion_result.ptr == v.end()) { return n; }
         return std::nullopt;
@@ -100,7 +102,7 @@ public:
             auto &[value, to_parse_after_value] = parse_result.value();
             to_parse = to_parse_after_value;
             if (!value) { continue; }
-            json_object.emplace_back(key, std::move(value));
+            json_object.emplace_back(key, std::move(value).value());
         }
         return parsed_json{std::move(json_object)};
     }
@@ -221,7 +223,7 @@ private:
         }
         if (ch_pos == 0 || (is_negative && ch_pos == 1)) { return std::nullopt; }
 
-        return parse_result{.value = detail::to_double(fcontent.substr(0, ch_pos)).value_or(0.0),
+        return parse_result{.value = detail::sv_to_number<Number>(fcontent.substr(0, ch_pos)).value_or(0.0),
                             .remaining = fcontent.substr(ch_pos)};
     }
 
