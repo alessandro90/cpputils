@@ -236,21 +236,23 @@ private:
         bool found_dot{false};
         while (ch_pos < fcontent.size()) {
             auto const ch = fcontent[ch_pos];
-            if (detail::is_digit(ch)) {
-                ++ch_pos;
-                continue;
-            }
-            bool const is_dot = ch == '.';
-            if (ch_pos > 0 && is_dot && !found_dot) {
+            if (ch == '.') {
+                if (found_dot) { return std::nullopt; }
                 found_dot = true;
                 ++ch_pos;
                 continue;
             }
-            bool const is_end = is_record_end(ch);
-            if ((!is_end && !detail::is_digit(ch)) || (found_dot && is_dot)) { return std::nullopt; }
-            if (is_end) { break; }
+            if (detail::is_digit(ch)) {
+                ++ch_pos;
+                continue;
+            }
+            if (is_record_end(ch)) { break; }
+            return std::nullopt;
         }
-        if (ch_pos == 0 || (is_negative && ch_pos == 1)) { return std::nullopt; }
+        // 3 error cases: 1. nothing to parse; 2. just a minus sigh; 3. last char is a dot (missing number)
+        if (ch_pos == 0 || (is_negative && ch_pos == 1) || (fcontent[ch_pos - 1U] == '.')) {
+            return std::nullopt;
+        }
 
         return parse_result_t{.value = detail::sv_to_number<Number>(fcontent.substr(0, ch_pos)).value_or(0.0),
                               .remaining = detail::skip_newline(detail::skip_comma(fcontent.substr(ch_pos)))};
