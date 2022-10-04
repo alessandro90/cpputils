@@ -64,13 +64,15 @@ public:
     using Bool = bool;
     using String = std::string;
     using Number = double;
-    using Object = std::unique_ptr<object_representation>;
+    using Object = std::unique_ptr<key_and_value>;
     using Array = std::vector<Object>;
 
     bool parse(std::string_view fcontent) {
         while (!fcontent.empty()) {
             // TODO: A for loop for all the parsers here
-            auto [key_value, remaining] = parse_object(fcontent);
+            auto parse_result = parse_object(fcontent);
+            if (!parse_result) { return false; }  // Invalid json
+            auto &[key_value, remaining] = parse_result.value();
             fcontent = remaining;
             if (!key_value) { continue; }
             m_json_object.push_back(std::move(key_value).value());
@@ -81,11 +83,13 @@ public:
 private:
     using json_value = std::variant<Null, Bool, String, Number, Array, Object>;
 
+    // NOLINTNEXTLINE
     struct key_and_value {
         std::string_view key{};
         json_value value{};
     };
 
+    // NOLINTNEXTLINE
     struct parse_result {
         std::optional<key_and_value> key_value{};
         std::string_view remaining{};
@@ -109,45 +113,45 @@ private:
         return key_and_remaining{.key = detail::strip(key), .remaining = detail::strip(remaining)};
     }
 
-    [[nodiscard]] static parse_result parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
+    [[nodiscard]] static std::optional<parse_result> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
         auto const km = split_key_and_remaining(fcontent);
-        if (!km) { return {.key_value = std::nullopt, .remaining = fcontent}; }
+        if (!km) { return std::nullopt; }
         auto const [key, remaining] = km.value();
         if (remaining.size() < keyword.size() + 1 || remaining.substr(0, keyword.size()) != keyword) {
-            return {.key_value = std::nullopt, .remaining = fcontent};
+            return parse_result{.key_value = std::nullopt, .remaining = fcontent};
         }
         if (!is_record_end(remaining[keyword.size()])) {
-            return {.key_value = std::nullopt, .remaining = fcontent};
+            return parse_result{.key_value = std::nullopt, .remaining = fcontent};
         }
-        return {.key_value = key_and_value{.key = key, .value = keyword_value},
-                .remaining = remaining.substr(keyword.size())};
+        return parse_result{.key_value = key_and_value{.key = key, .value = keyword_value},
+                            .remaining = remaining.substr(keyword.size())};
     }
 
-    // TODO: could return an optional<parse_result> to indicate invalid json format
-    [[nodiscard]] static parse_result parse_object(std::string_view) {
+    [[nodiscard]] static std::optional<parse_result> parse_object(std::string_view) {
         return {};
     }
 
-    [[nodiscard]] static parse_result parse_null(std::string_view fcontent) {
+    [[nodiscard]] static std::optional<parse_result> parse_null(std::string_view fcontent) {
         return parse_keyword(fcontent, "null", Null{});
     }
 
-    [[nodiscard]] static parse_result parse_bool(std::string_view fcontent) {
-        if (auto parse_true = parse_keyword(fcontent, "true", true); parse_true.key_value) {
+    [[nodiscard]] static std::optional<parse_result> parse_bool(std::string_view fcontent) {
+        if (auto parse_true = parse_keyword(fcontent, "true", true);
+            !parse_true || parse_true.value().key_value) {
             return parse_true;
         }
         return parse_keyword(fcontent, "false", false);
     }
 
-    [[nodiscard]] static parse_result parse_string(std::string_view) {
+    [[nodiscard]] static std::optional<parse_result> parse_string(std::string_view) {
         return {};
     }
 
-    [[nodiscard]] static parse_result parse_number(std::string_view) {
+    [[nodiscard]] static std::optional<parse_result> parse_number(std::string_view) {
         return {};
     }
 
-    [[nodiscard]] static parse_result parse_array(std::string_view) {
+    [[nodiscard]] static std::optional<parse_result> parse_array(std::string_view) {
         return {};
     }
 };
