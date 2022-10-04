@@ -2,7 +2,6 @@
 #define CPPUTILS_PARSERS_HPP
 
 #include <cstddef>
-#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -57,52 +56,36 @@ namespace detail {
 
 class json {
 private:
-    struct object_representation;
-    // struct key_and_value;
+    struct key_and_value;
+    using object_representation = std::vector<key_and_value>;
+
 public:
     struct Null {};
     using Bool = bool;
     using String = std::string;
     using Number = double;
     using Object = std::unique_ptr<object_representation>;
-    // using Object = std::list<key_and_value>;
     using Array = std::vector<Object>;
 
     bool parse(std::string_view fcontent) {
-        m_json_object = make_object();
-        object_representation *object_being_parsed = m_json_object.get();
         while (!fcontent.empty()) {
             // TODO: A for loop for all the parsers here
             auto [key_value, remaining] = parse_object(fcontent);
             fcontent = remaining;
             if (!key_value) { continue; }
-            // m_json_object.push_back(std::move(key_value));
-            object_being_parsed->key_value = std::move(key_value);
-            object_being_parsed->next_object = make_object();
-            object_being_parsed = object_being_parsed->next_object.get();
+            m_json_object.push_back(std::move(key_value).value());
         }
         return true;
     }
 
 private:
-    Object m_json_object{};
-
     using json_value = std::variant<Null, Bool, String, Number, Array, Object>;
 
-    // NOLINTNEXTLINE
     struct key_and_value {
         std::string_view key{};
         json_value value{};
     };
 
-    // TODO: what about using a std::list here?
-    // using object_representation = std::list<key_and_value>;
-    struct object_representation {
-        std::optional<key_and_value> key_value{};
-        Object next_object{};
-    };
-
-    // NOLINTNEXTLINE
     struct parse_result {
         std::optional<key_and_value> key_value{};
         std::string_view remaining{};
@@ -113,7 +96,7 @@ private:
         std::string_view remaining;
     };
 
-    [[nodiscard]] static Object make_object() { return std::make_unique<object_representation>(); }
+    object_representation m_json_object{};
 
     [[nodiscard]] static bool is_record_end(char ch) noexcept { return detail::is_newline(ch) || ch == ','; }
 
