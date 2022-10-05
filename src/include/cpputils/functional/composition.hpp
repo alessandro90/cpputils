@@ -12,20 +12,10 @@
 #define FWD(x) std::forward<decltype(x)>(x)
 
 namespace cpputils {
-namespace detail {
-    // template <typename... Fs>
-    // constexpr decltype(auto) compose_impl(std::tuple<Fs...> fs, auto... args) {
-    //     if constexpr (sizeof...(Fs) == 1) {
-    //         return std::get<0>(fs)(args...);
-    //     } else {
-    //         return compose_impl(
-    //             [=]<std::size_t... Ns>(std::index_sequence<Ns...>) {
-    //                 return std::tuple{std::get<Ns>(fs)...};
-    //             }(std::make_index_sequence<sizeof...(Fs) - 1>{}),
-    //             std::get<sizeof...(Fs) - 1>(fs)(args...));
-    //     }
-    // }
+template <typename>
+struct composer_t;
 
+namespace detail {
     template <typename F, typename G, typename... Ts>
     concept chainable = std::invocable<G, Ts...> && std::invocable<F, std::invoke_result_t<G, Ts...>>;
 
@@ -34,66 +24,63 @@ namespace detail {
         return std::invoke(FWD(f), std::invoke(FWD(g), FWD(args)...));
     }
 
-    template <typename F = void>
-    struct composer {
-        F f;
-
-        constexpr auto operator*(auto &&g) const && {
-            return make_composer([f_ = std::move(f), g_ = FWD(g)](auto &&...xs) {
-                return chain_invoke(f_, g_, FWD(xs)...);
-            });
-        }
-
-        constexpr auto operator/(auto &&g) const && {
-            return make_composer([f_ = std::move(f), g_ = FWD(g)](auto &&...xs) {
-                return chain_invoke(g_, f_, FWD(xs)...);
-            });
-        }
-    };
-
-    template <>
-    struct composer<void> {
-        constexpr auto operator*(auto &&g) const {
-            // clang-format off
-            return make_composer([g_ = FWD(g)](auto &&...xs) requires std::invocable<decltype(g), decltype(xs)...> {
-                return std::invoke(g_, FWD(xs)...);
-            });
-            // clang-format on
-        }
-
-        constexpr auto operator/(auto &&g) const {
-            return *this * FWD(g);
-        }
-    };
-
     template <typename F>
-    constexpr auto make_composer(F &&f) {
-        return composer<std::remove_cvref_t<F>>{FWD(f)};
+    [[nodiscard]] constexpr auto make_composer(F &&f) {
+        return composer_t<std::remove_cvref_t<F>>{FWD(f)};
     }
 }  // namespace detail
+template <typename F = void>
+struct composer_t {
+    F f;
 
-// constexpr auto compose(auto... fs) requires(sizeof...(fs) > 0) {
-//     return [fs...](auto... args) -> decltype(auto) {
-//         return detail::compose_impl(std::tuple{fs...}, args...);
-//     };
-// }
+    [[nodiscard]] constexpr auto operator<<(auto &&g) const && {
+        return detail::make_composer([f_ = std::move(f), g_ = FWD(g)](auto &&...xs) {
+            return detail::chain_invoke(f_, g_, FWD(xs)...);
+        });
+    }
 
-constexpr auto compose_right(auto &&...fs) {
+    [[nodiscard]] constexpr auto operator>>(auto &&g) const && {
+        return detail::make_composer([f_ = std::move(f), g_ = FWD(g)](auto &&...xs) {
+            return detail::chain_invoke(g_, f_, FWD(xs)...);
+        });
+    }
+
+    constexpr decltype(auto) operator()(auto &&...args) const
+        requires std::invocable<decltype(f), decltype(args)...>
+    {
+        return std::invoke(f, FWD(args)...);
+    }
+
+    constexpr decltype(auto) operator|(auto &&arg) const {
+        return this->operator()(FWD(arg));
+    }
+};
+
+template <>
+struct composer_t<void> {
+    [[nodiscard]] constexpr auto operator<<(auto &&g) const {
+        return detail::make_composer(
+            [g_ = FWD(g)](auto &&...xs) requires std::invocable<decltype(g), decltype(xs)...>  //
+            {
+                return std::invoke(g_, FWD(xs)...);
+            });
+    }
+
+    [[nodiscard]] constexpr auto operator>>(auto &&g) const {
+        return *this << FWD(g);
+    }
+};
+
+inline constexpr auto compose = composer_t<>{};
+
+[[nodiscard]] constexpr auto compose_r(auto &&...fs) {
     static_assert(sizeof...(fs) > 0);
-    return (detail::composer<>{} * ... * FWD(fs)).f;
+    return (compose << ... << FWD(fs));
 }
 
-consteval auto consteval_compose_right(auto &&...fs) {
-    return compose_right(FWD(fs)...);
-}
-
-constexpr auto compose_left(auto &&...fs) {
+[[nodiscard]] constexpr auto compose_l(auto &&...fs) {
     static_assert(sizeof...(fs) > 0);
-    return (detail::composer<>{} / ... / FWD(fs)).f;
-}
-
-consteval auto consteval_compose_left(auto &&...fs) {
-    return compose_left(FWD(fs)...);
+    return (compose >> ... >> FWD(fs));
 }
 
 #undef FWD
