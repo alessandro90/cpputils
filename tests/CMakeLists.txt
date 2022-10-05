@@ -36,6 +36,7 @@ ${TEST_PATH}/container_views_test.cpp
 ${TEST_PATH}/lazy_test.cpp
 ${TEST_PATH}/benchmark_test.cpp
 ${TEST_PATH}/range_maker_test.cpp
+${TEST_PATH}/traits_test.cpp
 )
 
 add_executable(cpputils_test ${TEST_FILES})

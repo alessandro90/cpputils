@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <concepts>
+#include <optional>
 #include <type_traits>
 
 
@@ -85,6 +86,57 @@ concept pair_like =
     }
     && std::is_member_object_pointer_v<std::remove_cvref_t<decltype(&std::remove_cvref_t<T>::first)>>
     && std::is_member_object_pointer_v<std::remove_cvref_t<decltype(&std::remove_cvref_t<T>::second)>>;
+
+namespace detail {
+    struct to_everything {
+        template <typename T>
+        constexpr explicit(false) operator T &&() const;  // NOLINT
+
+        template <typename T>
+        constexpr explicit(false) operator T &() const;  // NOLINT
+
+        template <typename T>
+        constexpr explicit(false) operator T const &() const;  // NOLINT
+    };
+
+    template <std::size_t Arity, std::size_t MaxArity, typename F, typename... Args>
+    struct arity_count {
+        inline static constexpr auto value =
+            std::is_invocable_v<F, Args...>
+                ? std::optional<std::size_t>{sizeof...(Args)}
+                : arity_count<Arity + 1, MaxArity, F, Args..., to_everything>::value;
+    };
+
+    template <std::size_t MaxArity, typename F, typename... Args>
+    struct arity_count<MaxArity, MaxArity, F, Args...> {
+        inline static constexpr auto value =
+            std::is_invocable_v<F, Args...>
+                ? std::optional<std::size_t>{sizeof...(Args)}
+                : std::optional<std::size_t>{};
+    };
+
+};  // namespace detail
+
+inline constexpr std::size_t default_max_arity_detectable = 50;
+
+template <typename F, std::size_t MaxArity = default_max_arity_detectable>
+struct arity {
+    inline static constexpr auto value = detail::arity_count<0, MaxArity, F>::value;
+};
+
+template <typename R, typename C, typename... Args, std::size_t MaxArity>
+struct arity<R (C::*)(Args...), MaxArity> {
+private:
+    struct self {};
+
+public:
+    inline static constexpr auto value = detail::arity_count<0, MaxArity, R(self, Args...)>::value;
+};
+
+template <typename F, std::size_t MaxArity = default_max_arity_detectable>
+inline constexpr auto arity_v = arity<F, MaxArity>::value;
+
 }  // namespace cpputils
+
 
 #endif
