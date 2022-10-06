@@ -239,7 +239,9 @@ namespace detail {
             return logger;
         } else {
             std::vector<std::pair<std::string, typename Logger::mapped_type>> copied_elements;
-            copied_elements.reserve(std::ranges::size(logger));
+            if constexpr (std::ranges::sized_range<Logger>) {
+                copied_elements.reserve(std::ranges::size(logger));
+            }
             std::ranges::move(logger, std::back_inserter(copied_elements));
             std::ranges::sort(copied_elements, sorter);
             return copied_elements;
