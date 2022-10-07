@@ -40,12 +40,12 @@ namespace detail {
                         + static_cast<std::size_t>(s[1] == '\r'));
     }
 
-    [[nodiscard]] inline std::string_view skip_newlines_and_spaces(std::string_view s) {
-        if (s.empty()) { return s; }
-        std::size_t count{};
-        while (is_newline(s[count]) || is_space(s[count])) { ++count; }
-        return s.substr(count);
-    }
+    // [[nodiscard]] inline std::string_view skip_newlines_and_spaces(std::string_view s) {
+    //     if (s.empty()) { return s; }
+    //     std::size_t count{};
+    //     while (is_newline(s[count]) || is_space(s[count])) { ++count; }
+    //     return s.substr(count);
+    // }
 
     [[nodiscard]] inline std::string_view skip_comma(std::string_view s) {
         if (s.empty() || s[0] != ',') { return s; }
@@ -88,12 +88,40 @@ namespace detail {
         }
         return std::nullopt;
     }
+
+    [[nodiscard]] static std::string_view skip_brace(std::string_view s, char brace) {
+        if (!s.empty() && s[0] == brace) { s.remove_prefix(1); }
+        return s;
+    }
+
+
+    [[nodiscard]] inline std::optional<std::string_view> strip_marks(std::string_view v) {
+        if (v.size() < 3 || !v.starts_with('"') || !v.ends_with('"')) { return std::nullopt; }
+        v.remove_prefix(1);
+        v.remove_suffix(1);
+        return v;
+    }
+
+    [[nodiscard]] inline auto split_at(char at, std::string_view s) {
+        struct left_and_right_t {
+            std::string_view left;
+            std::string_view right;
+        };
+        using maybe_left_and_right_t = std::optional<left_and_right_t>;
+        auto const sep_pos = s.find(at);
+        if (sep_pos == std::string_view::npos) { return maybe_left_and_right_t{}; }
+        auto const left = detail::strip(s.substr(0, sep_pos));
+        if (left.size() + 1U == s.size()) { return maybe_left_and_right_t{}; }
+        auto const right = lstrip(s.substr(sep_pos + 1U));
+        if (right.empty()) { return maybe_left_and_right_t{}; }
+        return maybe_left_and_right_t(std::in_place, left, right);
+    }
 }  // namespace detail
 
 class json {
 private:
     struct key_and_value_t;
-    // using json_representation_t = std::vector<key_and_value_t>;
+    using object_item_t = std::unique_ptr<key_and_value_t>;
 
 public:
     struct Null {};
@@ -101,7 +129,7 @@ public:
     using String = std::string_view;
     using Number = double;
     struct json_value_t;
-    using Object = std::vector<std::unique_ptr<key_and_value_t>>;
+    using Object = std::vector<object_item_t>;
     using Array = std::vector<json_value_t>;
     struct json_value_t {
         using alternatives_t = std::variant<Null, Bool, String, Number, Array, Object>;
@@ -117,29 +145,27 @@ public:
     [[nodiscard]] static std::optional<parsed_json_t> parse(std::string_view fcontent) {
         if (fcontent.empty()) { return std::nullopt; }
         Object json_object{};
-        auto to_parse = detail::lstrip(detail::skip_newline(skip_brace(detail::lstrip(fcontent), '{')));
+        auto to_parse = detail::lstrip(detail::skip_newline(detail::skip_brace(detail::lstrip(fcontent), '{')));
         while (!to_parse.empty() && to_parse[0] != '}') {
             auto parse_output = parse_key_value(to_parse);
             if (!parse_output) { return std::nullopt; }
             auto &[parsed_object, remaining_chars] = parse_output.value();
             to_parse = detail::lstrip(remaining_chars);
-            json_object.push_back(std::make_unique<key_and_value_t>(std::move(parsed_object)));
+            json_object.push_back(make_json_obj(std::move(parsed_object)));
         }
         if (to_parse.empty() || to_parse[0] != '}') { return std::nullopt; }
         return parsed_json_t{std::move(json_object)};
     }
 
 private:
-    // NOLINTNEXTLINE
     struct key_and_value_t {
-        std::string_view key{};
-        json_value_t value{};
+        std::string_view key;
+        json_value_t value;
     };
 
-    // NOLINTNEXTLINE
     struct parse_result_t {
-        std::optional<json_value_t> value{};
-        std::string_view remaining{};
+        std::optional<json_value_t> value;
+        std::string_view remaining;
     };
 
     struct key_and_remaining_t {
@@ -148,8 +174,8 @@ private:
     };
 
     struct parsers_traversal_output_t {
-        key_and_value_t key_value{};
-        std::string_view remaining{};
+        key_and_value_t key_value;
+        std::string_view remaining;
     };
 
     struct parse_value_output_t {
@@ -157,32 +183,12 @@ private:
         std::string_view remaining;
     };
 
+    [[nodiscard]] static object_item_t make_json_obj(key_and_value_t &&kv) {
+        return std::make_unique<key_and_value_t>(std::move(kv));
+    }
+
     [[nodiscard]] static bool is_record_end(char ch) noexcept {
         return detail::is_newline(ch) || detail::char_is(ch, ',', ' ', '}', ']');
-    }
-
-    [[nodiscard]] static std::optional<std::string_view> strip_marks(std::string_view v) {
-        if (v.size() < 3 || !v.starts_with('"') || !v.ends_with('"')) { return std::nullopt; }
-        v.remove_prefix(1);
-        v.remove_suffix(1);
-        return v;
-    }
-
-    [[nodiscard]] static std::string_view skip_brace(std::string_view s, char brace) {
-        if (!s.empty() && s[0] == brace) { s.remove_prefix(1); }
-        return s;
-    }
-
-    [[nodiscard]] static std::optional<key_and_remaining_t> split_key_and_remaining(std::string_view fcontent) {
-        auto const colon_pos = fcontent.find(':');
-        if (colon_pos == std::string_view::npos) { return std::nullopt; }
-        auto const maybe_key = strip_marks(detail::strip(fcontent.substr(0, colon_pos)));
-        if (!maybe_key) { return std::nullopt; }
-        auto const key = maybe_key.value();
-        if (key.size() + 1U == fcontent.size()) { return std::nullopt; }
-        auto const remaining = detail::lstrip(fcontent.substr(colon_pos + 1U));
-        if (remaining.empty()) { return std::nullopt; }
-        return key_and_remaining_t{.key = key, .remaining = remaining};
     }
 
     [[nodiscard]] static std::optional<parse_value_output_t> parse_value(std::string_view fcontent) {
@@ -198,13 +204,17 @@ private:
     }
 
     [[nodiscard]] static std::optional<parsers_traversal_output_t> parse_key_value(std::string_view fcontent) {
-        auto const key_and_to_parse = split_key_and_remaining(fcontent);
+        auto const key_and_to_parse = detail::split_at(':', fcontent);
         if (!key_and_to_parse) { return std::nullopt; }
         auto const [key, to_parse_after_key] = key_and_to_parse.value();
+        auto maybe_key_without_marks = detail::strip_marks(key);
+        if (!maybe_key_without_marks) { return std::nullopt; }
         auto parsed_value = parse_value(to_parse_after_key);
         if (!parsed_value) { return std::nullopt; }
         auto &[json_value, to_parse] = parsed_value.value();
-        return parsers_traversal_output_t{.key_value = {.key = key, .value = std::move(json_value)}, .remaining = to_parse};
+        return parsers_traversal_output_t{.key_value = {.key = maybe_key_without_marks.value(),
+                                                        .value = std::move(json_value)},
+                                          .remaining = to_parse};
     }
 
     // TODO: could use expected<parse_result_t, fail_reason_t> and change parse_result_t to have just a json_value_t and not optional<json_value_t>
@@ -218,18 +228,18 @@ private:
 
     [[nodiscard]] static std::optional<parse_result_t> parse_object(std::string_view fcontent) {
         if (fcontent[0] != '{') { return parse_result_t{.value = std::nullopt, .remaining = fcontent}; }
-        fcontent = detail::lstrip(detail::skip_newline(skip_brace(fcontent, '{')));
+        fcontent = detail::lstrip(detail::skip_newline(detail::skip_brace(fcontent, '{')));
         Object json_object{};
         while (!fcontent.empty() && fcontent[0] != '}') {
             auto parsed = parse_key_value(fcontent);
             if (!parsed) { return std::nullopt; }
             auto &[key_value, remaining] = parsed.value();
             fcontent = detail::lstrip(detail::skip_newline(detail::skip_comma(remaining)));
-            json_object.push_back(std::make_unique<key_and_value_t>(std::move(key_value)));
+            json_object.push_back(make_json_obj(std::move(key_value)));
         }
         if (fcontent.empty()) { return std::nullopt; }
         return parse_result_t{.value = json_value_t{std::move(json_object)},
-                              .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(skip_brace(fcontent, '}'))))};
+                              .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(detail::skip_brace(fcontent, '}'))))};
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_null(std::string_view fcontent) {
@@ -272,7 +282,7 @@ private:
         if (fcontent.empty() || !(fcontent[0] == '[')) {
             return parse_result_t{.value = std::nullopt, .remaining = fcontent};
         }
-        fcontent = detail::lstrip(skip_brace(fcontent, '['));
+        fcontent = detail::lstrip(detail::skip_brace(fcontent, '['));
         if (fcontent.empty()) { return std::nullopt; }
         Array items{};
         while (!fcontent.empty() && fcontent[0] != ']') {
@@ -284,7 +294,7 @@ private:
         }
         if (fcontent.empty()) { return std::nullopt; }
         return parse_result_t{.value = json_value_t{std::move(items)},
-                              .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(skip_brace(detail::lstrip(fcontent), ']'))))};
+                              .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(detail::skip_brace(detail::lstrip(fcontent), ']'))))};
     }
 
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)

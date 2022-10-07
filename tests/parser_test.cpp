@@ -37,7 +37,7 @@ void print_json(json::Object const &o) {
 
 TEST_CASE("parser-test-stub", "[check-compilation]") {
     const char *json_text =
-        R"xx( { "something": { "v_0": 10, "r": { "v_1": [1, 2] } } } )xx";
+        R"xx( { "something": { "v_0": 10, "r": { "v_1": [1, 2] } }, "something_else": 1245.3 } )xx";
 
     auto const parsed = json::parse(json_text);
     if (!parsed) {
