@@ -1,7 +1,7 @@
 #ifndef CPPUTILS_PARSERS_HPP
 #define CPPUTILS_PARSERS_HPP
 
-// #include <iostream>
+#include <iostream>
 
 #include <algorithm>
 #include <cctype>
@@ -86,7 +86,7 @@ namespace detail {
 class json {
 private:
     struct key_and_value_t;
-    using json_representation_t = std::vector<key_and_value_t>;
+    // using json_representation_t = std::vector<key_and_value_t>;
 
 public:
     struct Null {};
@@ -94,7 +94,7 @@ public:
     using String = std::string_view;
     using Number = double;
     struct json_value_t;
-    using Object = std::unique_ptr<key_and_value_t>;
+    using Object = std::vector<std::unique_ptr<key_and_value_t>>;
     using Array = std::vector<json_value_t>;
     struct json_value_t {
         using alternatives_t = std::variant<Null, Bool, String, Number, Array, Object>;
@@ -102,21 +102,23 @@ public:
     };
 
     struct parsed_json_t {
-        json_representation_t m_object_representation;
+        Object m_object_representation;
     };
 
     // TODO: this should return an expected<parsed_json_t, std::string_view>. The error being
     // the non parsed string
     [[nodiscard]] static std::optional<parsed_json_t> parse(std::string_view fcontent) {
         if (fcontent.empty()) { return std::nullopt; }
-        json_representation_t json_object{};
+        Object json_object{};
         auto to_parse = detail::lstrip(detail::skip_newline(skip_brace(detail::lstrip(fcontent), '{')));
         while (!to_parse.empty() && to_parse[0] != '}') {
             auto parse_output = parse_key_value(to_parse);
             if (!parse_output) { return std::nullopt; }
             auto &[parsed_object, remaining_chars] = parse_output.value();
             to_parse = detail::lstrip(remaining_chars);
-            json_object.push_back(std::move(parsed_object));
+            std::cout << "CALL\n";
+            std::cout << to_parse << '\n';
+            json_object.push_back(std::make_unique<key_and_value_t>(std::move(parsed_object)));
         }
         if (to_parse.empty() || to_parse[0] != '}') { return std::nullopt; }
         return parsed_json_t{std::move(json_object)};
@@ -218,8 +220,11 @@ private:
         if (!parsed) { return std::nullopt; }
 
         auto &[key_value, remaining] = parsed.value();
-
-        return parse_result_t{.value = json_value_t{std::make_unique<key_and_value_t>(std::move(key_value))},
+        return parse_result_t{.value = json_value_t{.json_value = [kv = std::move(key_value)]() mutable {
+                                  Object obj{};
+                                  obj.push_back(std::make_unique<key_and_value_t>(std::move(kv)));
+                                  return obj;
+                              }()},
                               .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(skip_brace(detail::lstrip(remaining), '}'))))};
     }
 
