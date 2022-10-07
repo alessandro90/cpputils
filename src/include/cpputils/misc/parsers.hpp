@@ -122,32 +122,34 @@ namespace json {
     namespace json_impl {
         struct key_and_value_t;
         using object_item_t = std::unique_ptr<key_and_value_t>;
+        struct record_t;
     }  // namespace json_impl
 
     struct Null {};
     using Bool = bool;
     using String = std::string_view;
     using Number = double;
-    struct json_value_t;
     using Object = std::vector<json_impl::object_item_t>;
-    using Array = std::vector<json_value_t>;
-    struct json_value_t {
-        using alternatives_t = std::variant<Null, Bool, String, Number, Array, Object>;
-        alternatives_t json_value;
-    };
+    using Array = std::vector<json_impl::record_t>;
+    namespace json_impl {
+        struct record_t {
+            using alternatives_t = std::variant<Null, Bool, String, Number, Array, Object>;
+            alternatives_t json_value;
+        };
+    }  // namespace json_impl
 
     struct parsed_json_t {
-        Object m_object_representation;
+        Object m_json_object;
     };
 
     namespace json_impl {
         struct key_and_value_t {
             std::string_view key;
-            json_value_t value;
+            record_t value;
         };
 
         struct parse_result_t {
-            std::optional<json_value_t> value;
+            std::optional<record_t> value;
             std::string_view remaining;
         };
 
@@ -162,7 +164,7 @@ namespace json {
         };
 
         struct parse_value_output_t {
-            json_value_t value;
+            record_t value;
             std::string_view remaining;
         };
 
@@ -190,12 +192,12 @@ namespace json {
                                               .remaining = to_parse};
         }
 
-        // TODO: could use expected<parse_result_t, fail_reason_t> and change parse_result_t to have just a json_value_t and not optional<json_value_t>
+        // TODO: could use expected<parse_result_t, fail_reason_t> and change parse_result_t to have just a record_t and not optional<record_t>
         [[nodiscard]] inline std::optional<parse_result_t> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
             if (fcontent.size() < keyword.size() + 1 || fcontent.substr(0, keyword.size()) != keyword || !is_record_end(fcontent[keyword.size()])) {
                 return parse_result_t{.value = std::nullopt, .remaining = fcontent};
             }
-            return parse_result_t{.value = json_value_t{keyword_value},
+            return parse_result_t{.value = record_t{keyword_value},
                                   .remaining = parsers_impl::skip_newline(parsers_impl::skip_comma(fcontent.substr(keyword.size())))};
         }
 
@@ -211,7 +213,7 @@ namespace json {
                 json_object.push_back(make_json_obj(std::move(key_value)));
             }
             if (fcontent.empty()) { return std::nullopt; }
-            return parse_result_t{.value = json_value_t{std::move(json_object)},
+            return parse_result_t{.value = record_t{std::move(json_object)},
                                   .remaining = parsers_impl::lstrip(parsers_impl::skip_newline(parsers_impl::skip_comma(parsers_impl::skip_brace(fcontent, '}'))))};
         }
 
@@ -230,7 +232,7 @@ namespace json {
         [[nodiscard]] inline std::optional<parse_result_t> parse_string(std::string_view fcontent) {
             if (fcontent[0] != '"') { return parse_result_t{.value = std::nullopt, .remaining = fcontent}; }
             if (auto const closing_mark = fcontent.find_first_of('"', 1); closing_mark != std::string_view::npos) {
-                return parse_result_t{.value = json_value_t{fcontent.substr(1, closing_mark - 1U)},  // Skip marks
+                return parse_result_t{.value = record_t{fcontent.substr(1, closing_mark - 1U)},  // Skip marks
                                       .remaining = parsers_impl::skip_newline(parsers_impl::skip_comma(fcontent.substr(closing_mark + 1U)))};
             }
             return std::nullopt;
@@ -247,7 +249,7 @@ namespace json {
             if (!num) {
                 return std::nullopt;
             }
-            return parse_result_t{.value = json_value_t{num.value()},
+            return parse_result_t{.value = record_t{num.value()},
                                   .remaining = parsers_impl::skip_newline(parsers_impl::skip_comma(std::string_view(last, fcontent.end())))};
         }
 
@@ -266,7 +268,7 @@ namespace json {
                 fcontent = parsers_impl::lstrip(to_parse);
             }
             if (fcontent.empty()) { return std::nullopt; }
-            return parse_result_t{.value = json_value_t{std::move(items)},
+            return parse_result_t{.value = record_t{std::move(items)},
                                   .remaining = parsers_impl::lstrip(parsers_impl::skip_newline(parsers_impl::skip_comma(parsers_impl::skip_brace(parsers_impl::lstrip(fcontent), ']'))))};
         }
 

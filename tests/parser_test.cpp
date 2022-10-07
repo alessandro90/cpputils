@@ -43,7 +43,7 @@ TEST_CASE("parser-test-stub", "[check-compilation]") {
     if (!parsed) {
         std::cout << "Invalid json\n";
     } else {
-        auto const &obj = parsed.value().m_object_representation;
+        auto const &obj = parsed.value().m_json_object;
         std::cout << "JSON level 0 size -> " << obj.size() << '\n';
         print_json(obj);
         std::cout << "\n";
