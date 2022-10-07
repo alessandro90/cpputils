@@ -1,7 +1,7 @@
 #ifndef CPPUTILS_PARSERS_HPP
 #define CPPUTILS_PARSERS_HPP
 
-#include <iostream>
+// #include <iostream>
 
 #include <algorithm>
 #include <cctype>
@@ -38,6 +38,13 @@ namespace detail {
         return s.substr(static_cast<std::size_t>(s[0] == '\n')
                         + static_cast<std::size_t>(s[0] == '\r')
                         + static_cast<std::size_t>(s[1] == '\r'));
+    }
+
+    [[nodiscard]] inline std::string_view skip_newlines_and_spaces(std::string_view s) {
+        if (s.empty()) { return s; }
+        std::size_t count{};
+        while (is_newline(s[count]) || is_space(s[count])) { ++count; }
+        return s.substr(count);
     }
 
     [[nodiscard]] inline std::string_view skip_comma(std::string_view s) {
@@ -116,8 +123,6 @@ public:
             if (!parse_output) { return std::nullopt; }
             auto &[parsed_object, remaining_chars] = parse_output.value();
             to_parse = detail::lstrip(remaining_chars);
-            std::cout << "CALL\n";
-            std::cout << to_parse << '\n';
             json_object.push_back(std::make_unique<key_and_value_t>(std::move(parsed_object)));
         }
         if (to_parse.empty() || to_parse[0] != '}') { return std::nullopt; }
@@ -213,19 +218,18 @@ private:
 
     [[nodiscard]] static std::optional<parse_result_t> parse_object(std::string_view fcontent) {
         if (fcontent[0] != '{') { return parse_result_t{.value = std::nullopt, .remaining = fcontent}; }
-
         fcontent = detail::lstrip(detail::skip_newline(skip_brace(fcontent, '{')));
-
-        auto parsed = parse_key_value(fcontent);
-        if (!parsed) { return std::nullopt; }
-
-        auto &[key_value, remaining] = parsed.value();
-        return parse_result_t{.value = json_value_t{.json_value = [kv = std::move(key_value)]() mutable {
-                                  Object obj{};
-                                  obj.push_back(std::make_unique<key_and_value_t>(std::move(kv)));
-                                  return obj;
-                              }()},
-                              .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(skip_brace(detail::lstrip(remaining), '}'))))};
+        Object json_object{};
+        while (!fcontent.empty() && fcontent[0] != '}') {
+            auto parsed = parse_key_value(fcontent);
+            if (!parsed) { return std::nullopt; }
+            auto &[key_value, remaining] = parsed.value();
+            fcontent = detail::lstrip(detail::skip_newline(detail::skip_comma(remaining)));
+            json_object.push_back(std::make_unique<key_and_value_t>(std::move(key_value)));
+        }
+        if (fcontent.empty()) { return std::nullopt; }
+        return parse_result_t{.value = json_value_t{std::move(json_object)},
+                              .remaining = detail::lstrip(detail::skip_newline(detail::skip_comma(skip_brace(fcontent, '}'))))};
     }
 
     [[nodiscard]] static std::optional<parse_result_t> parse_null(std::string_view fcontent) {
