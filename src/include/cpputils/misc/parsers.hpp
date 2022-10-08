@@ -8,8 +8,10 @@
 #include <charconv>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -120,27 +122,86 @@ namespace parsers_impl {
 
 namespace json {
     namespace json_impl {
-        struct key_and_value_t;
-        using object_item_t = std::unique_ptr<key_and_value_t>;
-        struct record_t;
-    }  // namespace json_impl
 
-    struct Null {};
-    using Bool = bool;
-    using String = std::string_view;
-    using Number = double;
-    using Object = std::vector<json_impl::object_item_t>;
-    using Array = std::vector<json_impl::record_t>;
-    namespace json_impl {
-        struct record_t {
-            using alternatives_t = std::variant<Null, Bool, String, Number, Array, Object>;
-            alternatives_t json_value;
+        template <typename T>
+        class primitive_record_t {
+        public:
+            using value_type = T;
+
+            explicit primitive_record_t(T val)
+                : m_val{val} {}
+
+            [[nodiscard]] T get() const noexcept { return m_val; }
+
+            template <std::convertible_to<T> To>
+            [[nodiscard]] T get_as() const noexcept { return static_cast<To>(m_val); }
+
+            [[nodiscard]] explicit operator T() const noexcept {
+                return m_val;
+            }
+
+        private:
+            T m_val;
         };
     }  // namespace json_impl
 
-    struct parsed_json_t {
-        Object m_json_object;
+    struct Null {};
+
+    using Bool = json_impl::primitive_record_t<bool>;
+
+    using Number = json_impl::primitive_record_t<double>;
+
+    class String {
+    public:
+        explicit String(std::string_view val)
+            : m_val{val} {}
+
+        [[nodiscard]] std::string_view get() const noexcept {
+            return m_val;
+        }
+
+        [[nodiscard]] std::string as_string() const {
+            return std::string{m_val};
+        }
+
+        template <typename T>
+        [[nodiscard]] std::optional<T> as_num() const
+            requires std::same_as<T, int> || std::same_as<T, double>
+        {
+            return parsers_impl::sv_to_number<T>(m_val);
+        }
+
+        [[nodiscard]] explicit(false) operator std::string_view() const noexcept {  // NOLINT
+            return m_val;
+        }
+
+    private:
+        std::string_view m_val;
     };
+    namespace json_impl {
+        using object_item_t = std::unique_ptr<struct key_and_value_t>;
+    }
+    using Object = std::vector<json_impl::object_item_t>;
+    // using Object = std::vector<json_impl::object_item_t>;
+    using Array = std::vector<struct record_t>;
+
+    // TODO: Proper implementation to let the user access the fields
+    // A getter returning a optional ref. wrapper
+    // a visitor
+    // maybe a variadic access .access("k0, k1, k2,...")
+    struct record_t {
+        using alternatives_t = std::variant<Null, Bool, String, Number, Array, Object>;
+        alternatives_t json_value;
+
+        // TODO: use optional_ref
+        template <typename T>
+        [[nodiscard]] std::optional<std::reference_wrapper<T const>> as() const {
+            auto const *val = std::get_if<T>(json_value);
+            if (val == nullptr) { return std::nullopt; }
+            return std::cref(*val);
+        }
+    };
+
 
     namespace json_impl {
         struct key_and_value_t {
@@ -167,6 +228,19 @@ namespace json {
             record_t value;
             std::string_view remaining;
         };
+    }  // namespace json_impl
+
+    struct parsed_json_t {
+        Object m_json_object;
+        // TODO: use optional_ref
+        [[nodiscard]] record_t const &operator[](std::string_view key) const {
+            auto const value = std::ranges::find_if(m_json_object, [key](json_impl::object_item_t const &item) {
+                return item->key == key;
+            });
+        }
+    };
+
+    namespace json_impl {
 
         [[nodiscard]] std::optional<parse_value_output_t> parse_value(std::string_view fcontent);
 
@@ -193,7 +267,7 @@ namespace json {
         }
 
         // TODO: could use expected<parse_result_t, fail_reason_t> and change parse_result_t to have just a record_t and not optional<record_t>
-        [[nodiscard]] inline std::optional<parse_result_t> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
+        [[nodiscard]] std::optional<parse_result_t> parse_keyword(std::string_view fcontent, std::string_view keyword, auto keyword_value) {  // NOLINT
             if (fcontent.size() < keyword.size() + 1 || fcontent.substr(0, keyword.size()) != keyword || !is_record_end(fcontent[keyword.size()])) {
                 return parse_result_t{.value = std::nullopt, .remaining = fcontent};
             }
@@ -222,17 +296,17 @@ namespace json {
         }
 
         [[nodiscard]] inline std::optional<parse_result_t> parse_bool(std::string_view fcontent) {
-            if (auto parse_true = parse_keyword(fcontent, "true", true);
+            if (auto parse_true = parse_keyword(fcontent, "true", Bool{true});
                 !parse_true || parse_true.value().value) {
                 return parse_true;
             }
-            return parse_keyword(fcontent, "false", false);
+            return parse_keyword(fcontent, "false", Bool{false});
         }
 
         [[nodiscard]] inline std::optional<parse_result_t> parse_string(std::string_view fcontent) {
             if (fcontent[0] != '"') { return parse_result_t{.value = std::nullopt, .remaining = fcontent}; }
             if (auto const closing_mark = fcontent.find_first_of('"', 1); closing_mark != std::string_view::npos) {
-                return parse_result_t{.value = record_t{fcontent.substr(1, closing_mark - 1U)},  // Skip marks
+                return parse_result_t{.value = record_t{String{fcontent.substr(1, closing_mark - 1U)}},  // Skip marks
                                       .remaining = parsers_impl::skip_newline(parsers_impl::skip_comma(fcontent.substr(closing_mark + 1U)))};
             }
             return std::nullopt;
@@ -245,11 +319,11 @@ namespace json {
             auto const last = std::ranges::find_if(fcontent, is_record_end);
             if (last == fcontent.end()) { return std::nullopt; }
             if (last != fcontent.begin() && *std::prev(last) == '.') { return std::nullopt; }
-            auto const num = parsers_impl::sv_to_number<Number>(std::string_view{fcontent.begin(), last});
+            auto const num = parsers_impl::sv_to_number<typename Number::value_type>(std::string_view{fcontent.begin(), last});
             if (!num) {
                 return std::nullopt;
             }
-            return parse_result_t{.value = record_t{num.value()},
+            return parse_result_t{.value = record_t{Number{num.value()}},
                                   .remaining = parsers_impl::skip_newline(parsers_impl::skip_comma(std::string_view(last, fcontent.end())))};
         }
 

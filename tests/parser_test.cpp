@@ -10,9 +10,9 @@ using namespace cpputils::parsers;
 namespace {
 void print_(json::Object const &o);
 void print_(json::Null const &) { std::cout << "Null, "; }
-void print_(json::Bool const &primitive) { std::cout << primitive << ", "; };
-void print_(json::String const &primitive) { std::cout << primitive << ", "; };
-void print_(json::Number const &primitive) { std::cout << primitive << ", "; };
+void print_(json::Bool const &primitive) { std::cout << primitive.get() << ", "; };
+void print_(json::String const &primitive) { std::cout << primitive.get() << ", "; };
+void print_(json::Number const &primitive) { std::cout << primitive.get() << ", "; };
 void print_(json::Array const &a) {
     std::cout << "[ \n";
     for (auto const &item : a) {
