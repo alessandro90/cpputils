@@ -2,10 +2,12 @@
 #define CPPUTILS_EXPECTED_HPP
 
 #include "../meta/traits.hpp"
+#include "../types/optional_ref.hpp"
 #include <concepts>
 #include <exception>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -482,8 +484,8 @@ class expected
     using base_expected::error_unchecked;
 
 public:
-    using base_expected::value_t;
-    using base_expected::error_t;
+    using value_type = base_expected::value_t;
+    using error_type = base_expected::error_t;
 
     using base_expected::base_expected;  // Bring constructors in scope
 
@@ -659,6 +661,39 @@ public:
         return or_else_impl(std::move(*this), FWD(cb));
     }
 
+    [[nodiscard]] constexpr std::optional<value_type> into_optional() requires (!std::is_reference_v<value_type>)
+    {
+        if (has_value()) {
+            return std::move(*this).value_unchecked();
+        }
+        return std::nullopt;
+    }
+
+    [[nodiscard]] constexpr optional_ref<std::remove_reference_t<value_type>> as_optional() const &  //
+        requires std::is_reference_v<value_type>
+    {
+        return as_optional_ref_impl();
+    }
+
+    [[nodiscard]] constexpr optional_ref<std::remove_reference_t<value_type>> as_optional() const &&  //
+        requires std::is_reference_v<value_type>
+    {
+        return as_optional_ref_impl();
+    }
+
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() & {
+        return as_optional_impl(*this);
+    }
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() const & {
+        return as_optional_impl(*this);
+    }
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() && {
+        return as_optional_impl(std::move(*this));
+    }
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() const && {
+        return as_optional_impl(std::move(*this));
+    }
+
     [[nodiscard]] constexpr auto get_hash() const {
         if (*this) { return std::hash<std::remove_const_t<Value_t>>{}(value_unchecked()); }
         return std::hash<std::remove_const_t<Error_t>>{}(error_unchecked());
@@ -732,6 +767,18 @@ private:
     static constexpr decltype(auto) or_else_impl(auto &&e, std::invocable<decltype(FWD(e).error_unchecked())> auto &&cb) {
         if (!e) { std::invoke(FWD(e).error_unchecked(), FWD(cb)); }
         return FWD(e);
+    }
+
+    [[nodiscard]] static constexpr std::optional<value_type> as_optional_impl(auto &&self) {
+        if (self.has_value()) { return FWD(self).value_unchecked(); }
+        return std::nullopt;
+    }
+
+    [[nodiscard]] constexpr optional_ref<value_type> as_optional_ref_impl() const
+        requires (!std::is_reference_v<value_type>)
+    {
+        if (has_value()) { return optional_ref{value_unchecked()}; }
+        return std::nullopt;
     }
 };
 

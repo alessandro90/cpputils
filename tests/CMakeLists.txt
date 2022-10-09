@@ -38,6 +38,7 @@ ${TEST_PATH}/benchmark_test.cpp
 ${TEST_PATH}/range_maker_test.cpp
 ${TEST_PATH}/traits_test.cpp
 ${TEST_PATH}/composition_test.cpp
+${TEST_PATH}/optional_ref_test.cpp
 )
 
 add_executable(cpputils_test ${TEST_FILES})

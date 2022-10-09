@@ -136,6 +136,29 @@ public:
 template <typename F, std::size_t MaxArity = default_max_arity_detectable>
 inline constexpr auto arity_v = arity<F, MaxArity>::value;
 
+
+template <typename T, typename K>
+concept different_than = (!std::is_same_v<T, K>);
+
+template <typename From, typename To>
+concept explicitly_convertible_to =
+    requires {
+        static_cast<To>(std::declval<From>());
+    };
+
+template <typename T>
+concept optional_like =
+    requires (T opt) {
+        { opt.value() } -> different_than<void>;
+        { *opt } -> different_than<void>;
+        { opt.has_value() } -> std::same_as<bool>;
+        { opt.value_or(std::declval<std::remove_cvref_t<decltype(opt.value())>>()) }
+          -> std::convertible_to<std::remove_cvref_t<decltype(opt.value())>>;
+    }
+    && explicitly_convertible_to<T, bool>
+    && std::same_as<decltype(std::declval<T>().value()), decltype(*std::declval<T>())>
+    && std::same_as<decltype(std::declval<T &>().value()), decltype(*std::declval<T &>())>;
+
 }  // namespace cpputils
 
 

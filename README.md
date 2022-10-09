@@ -52,8 +52,6 @@ Also a global `True` and `False` are available in the same namespace for conveni
 The internal value is availbale via the `val` member function.
 Casts can be performed via `static_cast` or the `as<T>` member function.
 
-#### **Example**
-
 ```cpp
 using namespace cpputils::literals;
 constexpr auto i = 11_u16;
@@ -69,8 +67,6 @@ assert(!False);
 
 `zip` takes an arbitrary values of containers (lvalues) and return a view of the zipped values. The shortest container is the limiting one.
 `zip` is a (lazy) range, and therefore support the transform syntax only as initial value (just like std::vector)
-
-#### **Example**
 
 ```cpp
     using namespace cpputils;
@@ -92,8 +88,6 @@ assert(!False);
 
 `zip_with` is similar to `zip` but it first takes a callable to apply to each of the zipped elements.
 
-#### **Example**
-
 ```cpp
     using namespace cpputils;
     auto const sum = [](int a, int b) { return a + b };
@@ -114,8 +108,6 @@ assert(!False);
 ### [enumerate](src/include/cpputils/functional/enumerate.hpp)
 
 Compatible with transform syntax. Custom types are supported as index (see example).
-
-#### **Example**
 
 ```cpp
 using namespace cpputils;
@@ -153,8 +145,6 @@ x | std::ranges::views::transform(divide) | enumerate();
 
 Converts a range to a std::vector.
 
-#### **Example**
-
 ```cpp
 using namespace cpputils;
 assert(std::ranges::iota(5) | to_vector() == std::vector{0, 1, 2, 3, 4});
@@ -164,11 +154,26 @@ assert(std::ranges::iota(5) | to_vector() == std::vector{0, 1, 2, 3, 4});
 
 C++23 will add [some monadic operations to optional](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p0798r6.html), so probably some of these utilities will be less interesting in the future.
 
+These functions can be used with any object which abides the `optional_like` concept (see [src/include/cpputils/meta/traits.hpp](src/include/cpputils/meta/traits.hpp)):
+
+```cpp
+template <typename T>
+concept optional_like =
+    requires (T opt) {
+        { opt.value() } -> different_than<void>;
+        { *opt } -> different_than<void>;
+        { opt.has_value() } -> std::same_as<bool>;
+        static_cast<bool>(opt);
+        { opt.value_or(std::declval<std::remove_cvref_t<decltype(opt.value())>>()) }
+          -> std::convertible_to<std::remove_cvref_t<decltype(opt.value())>>;
+    }
+    && std::same_as<decltype(std::declval<T>().value()), decltype(*std::declval<T>())>
+    && std::same_as<decltype(std::declval<T &>().value()), decltype(*std::declval<T &>())>;
+```
+
 ### map
 
 Takes a callable and an arbitrary number of optionals. If all optionals have values call the callable with all the contained values, otherwise return an empty optional. The callable can return itself an optional or not.
-
-#### **Example**
 
 ```cpp
 using namespace cpputils;
@@ -185,8 +190,6 @@ map([](int i, int j) { return std::optional{i + j} }, std::optional<int>{}, std:
 ### transform
 
 Takes an optional and a callable and apply the callable to the optional's contained element, if any. Otherwise return an empty optional. The callable can itself return an optional (just like for map), the result is flattened. For a more readable syntax use the `>>` operator.
-
-#### **Example**
 
 ```cpp
 using namespace cpputils;
@@ -205,8 +208,6 @@ std::optional{1}
 `if_value` takes and optional and a callable and apply the callable to the optional's contained element if any. Return a reference to the optional.
 `or_else` takes and optional and a callable and call the callable if the optional is empty. Return a reference to the optional.
 
-#### **Example**
-
 ```cpp
 using namespace cpputils;
 
@@ -223,8 +224,6 @@ std::optional{}
 `unwrap` calls `value` on the optional.
 `unwrap_or` calls `value_or` on the optional.
 `unwrap_or_else` calls `value` on the optional if it has a value, otherwise calls the provided fallback.
-
-#### **Example**
 
 ```cpp
 using namespace cpputils;
@@ -257,8 +256,6 @@ The "functions" implemented are (in progress, for the full list see the [test fi
 To be used for template classes. Does not work for non-type template parameters.
 `an` is just the concept version of is_specialization_of.
 
-#### **Example**
-
 ```cpp
 using namespace cpputils;
 
@@ -277,8 +274,6 @@ A very relaxed incrementable requirement.
 Concepts for template metaprogramming.
 `tl::predicate` is satisfied for every type `T` such that exists `T::value` and it is convertible to bool.
 `tl::transformation` is satisfied for every type `T` such that `typename T::type` exists.
-
-#### **Example**
 
 ```cpp
 using namespace cpputils;
@@ -459,6 +454,21 @@ struct Builder {
 
 ```cpp
 using LazyComplexObject = Lazy<ComplexObject, Builder<ComplexObject>>;
+```
+
+## [Optional-like for references](src/include/cpputils/types/optional_ref.hpp)
+
+Basically a fancy pointer to an object the exposes a very similar interface to std::optional. It abides the `optional_like` concept.
+
+Assignment is equivalent to a rebind.
+
+```cpp
+int x{10};
+optional_ref opt{x}; // Store a poiter to x
+int y{100};
+opt = y; // opt now has a pointer to y
+auto o_0 = opt.as_owned(); // o_0 is a std::optional<int>
+auto o_1 = opt.take_ownership(); // o_1 is a std::optional<int> and y has been 'moved from'. This method moves the value pointed by the internal pointer.
 ```
 
 ## Details

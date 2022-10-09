@@ -33,8 +33,6 @@
 
 namespace cpputils {
 
-template <typename T>
-concept optional_like = an<T, std::optional> || an<T, expected>;
 namespace detail {
     template <typename T>
     using reference_or_value = std::conditional_t<std::is_rvalue_reference_v<T>, std::remove_cvref_t<T>, T>;
@@ -156,28 +154,14 @@ inline constexpr auto unwrap_or_else = detail::optional_adaptor{
     }};
 // clang-format on
 
-inline constexpr auto to_optional = detail::optional_adaptor{
+inline constexpr auto to_optional_like = detail::optional_adaptor{
     [](auto &&arg) -> decltype(auto) {
-        if constexpr (is_specialization_v<decltype(arg), std::optional>) {
+        if constexpr (optional_like<decltype(arg)>) {  // noop
             return FWD(arg);
-        } else if constexpr (is_specialization_v<decltype(arg), expected>) {
-            // std::optional does not support references but expected does.
-            // Fallback to reference_wrapper to this special case
-            using value_t = typename std::remove_cvref_t<decltype(arg)>::value_t;
-            using opt_t = std::conditional_t<std::is_reference_v<value_t>,
-                                             std::reference_wrapper<std::remove_reference_t<value_t>>,
-                                             value_t>;
-            if (arg) {
-                if constexpr (std::is_reference_v<value_t>) {
-                    return std::optional<opt_t>{std::reference_wrapper{FWD(arg).value()}};
-                } else {
-                    return std::optional<opt_t>{FWD(arg).value()};
-                }
-            } else {
-                return std::optional<opt_t>{};
-            }
+        } else if constexpr (std::is_rvalue_reference_v<decltype(arg)>) {
+            return std::optional{std::move(arg)};
         } else {
-            return std::optional{FWD(arg)};
+            return optional_ref{arg};
         }
     }};
 }  // namespace cpputils

@@ -1,5 +1,6 @@
 #include "catch2/catch_test_macros.hpp"
 #include "cpputils/functional/opt_ext.hpp"
+#include "cpputils/types/optional_ref.hpp"
 #include <memory>
 #include <optional>
 #include <tuple>
@@ -22,7 +23,7 @@ auto const increase = [](auto &...vs) { (++vs, ...); };
 auto const increase_ref = [](int &v) { return [&v]() { ++v; }; };
 }  // namespace
 
-TEST_CASE("opt test", "[map]") {  // NOLINT
+TEST_CASE("map", "[opt-test]") {  // NOLINT
     {
         auto const out = map(increment, intopt{});
         REQUIRE(!out.has_value());
@@ -79,7 +80,7 @@ TEST_CASE("opt test", "[map]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[try_or]") {  // NOLINT
+TEST_CASE("try-or", "[opt-test]") {  // NOLINT
     {
         auto const out = try_or(increment, 0, intopt{});
         REQUIRE(out == 0);
@@ -106,7 +107,7 @@ TEST_CASE("opt test", "[try_or]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[try_or_else]") {  // NOLINT
+TEST_CASE("try-or-else", "[opt-test]") {  // NOLINT
     {
         auto const out = try_or_else(increment, return_v(0), intopt{});
         REQUIRE(out == 0);
@@ -133,7 +134,7 @@ TEST_CASE("opt test", "[try_or_else]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[apply]") {  // NOLINT
+TEST_CASE("apply", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         intopt b{};
@@ -179,7 +180,7 @@ TEST_CASE("opt test", "[apply]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[apply_or_else]") {  // NOLINT
+TEST_CASE("apply-or-else", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         intopt b{};
@@ -235,7 +236,7 @@ TEST_CASE("opt test", "[apply_or_else]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[transform]") {  // NOLINT
+TEST_CASE("transform", "[opt-test]") {  // NOLINT
     {
         auto const out = intopt{0}
                          >> transform(increment)
@@ -260,7 +261,7 @@ TEST_CASE("opt test", "[transform]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[if_value]") {  // NOLINT
+TEST_CASE("if-value", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         auto const &b = a >> if_value(increase);
@@ -276,7 +277,7 @@ TEST_CASE("opt test", "[if_value]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[or_else]") {  // NOLINT
+TEST_CASE("or-else", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         int v{};
@@ -296,7 +297,7 @@ TEST_CASE("opt test", "[or_else]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[unwrap]") {  // NOLINT
+TEST_CASE("unwrap", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         try {
@@ -314,7 +315,7 @@ TEST_CASE("opt test", "[unwrap]") {  // NOLINT
 }
 
 
-TEST_CASE("opt test", "[unwrap_or]") {  // NOLINT
+TEST_CASE("unwrap-or", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         auto const b = a >> unwrap_or(1);
@@ -327,7 +328,7 @@ TEST_CASE("opt test", "[unwrap_or]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[unwrap_or_else]") {  // NOLINT
+TEST_CASE("unwrap-or-else", "[opt-test]") {  // NOLINT
     {
         intopt a{};
         auto const b = a >> unwrap_or_else(return_v(1));
@@ -340,17 +341,32 @@ TEST_CASE("opt test", "[unwrap_or_else]") {  // NOLINT
     }
 }
 
-TEST_CASE("opt test", "[to_optional]") {  // NOLINT
+TEST_CASE("to-optional-like", "[opt-test]") {  // NOLINT
 
-    REQUIRE(to_optional(10) == std::optional{10});
-    STATIC_REQUIRE(std::is_same_v<decltype(to_optional(10)), std::optional<int>>);
+    REQUIRE(to_optional_like(10) == std::optional{10});
+    STATIC_REQUIRE(std::is_same_v<decltype(to_optional_like(10)), std::optional<int>>);
     {
         auto const opt = std::optional{0};
-        auto const &opt2 = to_optional(opt);
+        auto const &opt2 = to_optional_like(opt);
         REQUIRE(&opt == &opt2);
     }
     {
         std::optional<int> opt{};
-        REQUIRE(to_optional(opt) == std::optional<int>{});
+        REQUIRE(to_optional_like(opt) == std::optional<int>{});
     }
+}
+
+TEST_CASE("transform-optional-ref", "[opt-test]") {  // NOLINT
+    int const x = 10;
+    auto const xp = optional_ref{x} >> transform(increment);
+    REQUIRE(xp.has_value());
+    STATIC_REQUIRE(std::is_same_v<decltype(xp), std::optional<int> const>);
+    REQUIRE(xp.value() == increment(x));  // NOLINT
+}
+
+TEST_CASE("unwrap-optional-ref", "[opt-test]") {  // NOLINT
+    int const x = 10;
+    auto const xp = optional_ref{x} >> unwrap();
+    REQUIRE(xp == 10);
+    STATIC_REQUIRE(std::is_same_v<decltype(optional_ref{x} >> unwrap()), int const &>);
 }
