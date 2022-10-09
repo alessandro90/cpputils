@@ -74,6 +74,9 @@ inline constexpr auto is_duration_v = is_duration<D>::value;
 template <typename D>
 concept duration = is_duration_v<D>;
 
+template <typename F, typename R, typename... Args>
+concept invocable_r = std::is_invocable_r_v<R, F, Args...>;
+
 template <typename T>
 concept pair_like =
     requires (T t) {
