@@ -65,14 +65,6 @@ struct range_maker {
     }
 };
 
-namespace detail {
-    template <typename T>
-    struct is_cstyle_array : std::false_type {};
-
-    template <typename T, std::size_t N>
-    struct is_cstyle_array<T[N]> : std::true_type {};  // NOLINT
-}  // namespace detail
-
 template <typename T, std::size_t N, invocable_r<T> Generator>
 struct range_maker<std::array<T, N>, Generator> {
     [[nodiscard]] constexpr auto operator()(Generator g) const {
@@ -90,7 +82,7 @@ template <typename Range>
 inline constexpr auto make_range = []<typename Generator, typename... Args>(Generator g, Args... args)
     requires std::invocable<range_maker<Range, Generator>, Generator, Args...>
 {
-    static_assert(!detail::is_cstyle_array<Range>::value, "C-style arrays cannot be returned from functions, use std::array");
+    static_assert(!std::is_array_v<Range>, "C-style arrays cannot be returned from functions, use std::array");
     auto const factory = range_maker<Range, Generator>{};
     return factory(std::move(g), args...);
 };
