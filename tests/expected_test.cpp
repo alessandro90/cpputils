@@ -1,10 +1,12 @@
 #include "cpputils/functional/expected.hpp"
+#include "test_utils.hpp"
 #include <catch2/catch_all.hpp>
 #include <compare>
 #include <type_traits>
 
 
 using namespace cpputils;
+using namespace ::cpputils::test_utils;
 
 namespace {
 struct trivial {};
@@ -454,6 +456,64 @@ TEST_CASE("expected", "[value/error getter - rvalues]") {  // NOLINT
             char x{'x'};  // NOLINT
             auto const e = exp_t::err(x);
             STATIC_REQUIRE(std::is_same_v<decltype(std::move(e).error()), std::add_lvalue_reference_t<char const>>);
+        }
+    }
+}
+
+TEST_CASE("expected", "[into-optional-conversions]") {
+    using type_t = expected<move_detector, char>;
+    auto v = type_t::val(move_detector{});
+    auto opt = v.into_optional();
+    STATIC_REQUIRE(std::is_same_v<decltype(opt), std::optional<move_detector>>);
+    REQUIRE(v.value().moved);
+    REQUIRE(opt.has_value());
+}
+
+TEST_CASE("expected", "[as-optional-conversions]") {  // NOLINT
+    {
+        using type_t = expected<move_detector, char>;
+        {
+            auto v = type_t::val(move_detector{});
+            auto opt = v.as_optional();
+            STATIC_REQUIRE(std::is_same_v<decltype(opt), std::optional<move_detector>>);
+            REQUIRE_FALSE(v.value().moved);
+            REQUIRE(opt.has_value());
+        }
+        {
+            auto v = type_t::val(move_detector{});
+            auto opt = std::move(v).as_optional();
+            STATIC_REQUIRE(std::is_same_v<decltype(opt), std::optional<move_detector>>);
+            REQUIRE(v.value().moved);
+            REQUIRE(opt.has_value());
+        }
+    }
+    {
+        using type_t = expected<int &, char>;
+        {
+            int x = 10;
+            auto v = type_t::val(x);
+            auto opt = v.as_optional();
+            STATIC_REQUIRE(std::is_same_v<decltype(opt), optional_ref<int>>);
+            REQUIRE(opt.has_value());
+            REQUIRE(opt.value() == x);
+        }
+        {
+            int x = 10;
+            auto const v = type_t::val(x);
+            auto opt = v.as_optional();
+            STATIC_REQUIRE(std::is_same_v<decltype(opt), optional_ref<int>>);
+            REQUIRE(opt.has_value());
+            REQUIRE(opt.value() == x);
+        }
+    }
+    {
+        using type_t = expected<int, char>;
+        {
+            auto v = type_t::val(10);
+            auto opt = v.as_optional();
+            STATIC_REQUIRE(std::is_same_v<decltype(opt), std::optional<int>>);
+            REQUIRE(opt.has_value());
+            REQUIRE(opt.value() == 10);
         }
     }
 }

@@ -69,42 +69,42 @@ namespace detail {
     optional_adaptor_closure(Callable) -> optional_adaptor_closure<Callable>;
 }  // namespace detail
 
-[[nodiscard]] inline constexpr auto map(auto &&f, optional_like auto &&...opts) requires INVOCABLEs(f, *opts)
+[[nodiscard]] inline constexpr auto map(auto &&f, optional_like auto &&...opts) requires INVOCABLEs(f, opts.value())
 {
-    using ret_t = RES_Ts(f, *opts);
+    using ret_t = RES_Ts(f, opts.value());
 
     auto const ok = (opts && ...);
     if constexpr (is_specialization_v<ret_t, std::optional>) {
-        return ok ? INVKs(f, *opts) : ret_t{};
+        return ok ? INVKs(f, opts.value()) : ret_t{};
     } else {
-        return ok ? std::optional{INVKs(f, *opts)} : std::optional<ret_t>{};
+        return ok ? std::optional{INVKs(f, opts.value())} : std::optional<ret_t>{};
     }
 }
 
 [[nodiscard]] inline constexpr auto try_or_else(auto &&f, std::invocable<> auto &&otherwise, optional_like auto &&...opts)
-    requires (INVOCABLEs(f, *opts) && std::same_as<RES_Ts(f, *opts), RES_T0(otherwise)>)
+    requires (INVOCABLEs(f, opts.value()) && std::same_as<RES_Ts(f, opts.value()), RES_T0(otherwise)>)
 {
-    return (opts && ...) ? INVKs(f, *opts) : INVK0(otherwise);
+    return (opts && ...) ? INVKs(f, opts.value()) : INVK0(otherwise);
 }
 
 [[nodiscard]] inline constexpr auto try_or(auto &&f, auto &&otherwise, optional_like auto &&...opts)
-    requires (INVOCABLEs(f, *opts) && std::same_as<RES_Ts(f, *opts), std::remove_cvref_t<decltype(otherwise)>>)
+    requires (INVOCABLEs(f, opts.value()) && std::same_as<RES_Ts(f, opts.value()), std::remove_cvref_t<decltype(otherwise)>>)
 {
-    return (opts && ...) ? INVKs(f, *opts) : FWD(otherwise);
+    return (opts && ...) ? INVKs(f, opts.value()) : FWD(otherwise);
 }
 
-inline constexpr void apply(auto &&f, optional_like auto &&...opts) requires INVOCABLEs(f, *opts)
+inline constexpr void apply(auto &&f, optional_like auto &&...opts) requires INVOCABLEs(f, opts.value())
 {
     if ((opts && ...)) {
-        (std::invoke((f), FWD(*opts)), ...);
+        (std::invoke((f), FWD(opts.value())), ...);
     }
 }
 
 inline constexpr void apply_or_else(auto &&f, auto &&otherwise, optional_like auto &&...opts)
-    requires INVOCABLEs(f, *opts)
+    requires INVOCABLEs(f, opts.value())
 {
     if ((opts && ...)) {
-        (std::invoke(f, FWD(*opts)), ...);
+        (std::invoke(f, FWD(opts.value())), ...);
     } else {
         INVK0(otherwise);
     }
@@ -130,8 +130,8 @@ inline constexpr auto transform = detail::optional_adaptor{
         return map(FWD(f), FWD(opt));
     }};
 inline constexpr auto if_value = detail::optional_adaptor{
-    [](optional_like auto &&opt, std::invocable<decltype(*opt)> auto &&f) -> decltype(auto) {
-        if (opt) { std::invoke(f, *opt); }
+    [](optional_like auto &&opt, std::invocable<decltype(opt.value())> auto &&f) -> decltype(auto) {
+        if (opt) { std::invoke(f, opt.value()); }
         return FWD(opt);
     }};
 inline constexpr auto unwrap = detail::optional_adaptor{

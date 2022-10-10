@@ -161,14 +161,11 @@ template <typename T>
 concept optional_like =
     requires (T opt) {
         { opt.value() } -> different_than<void>;
-        { *opt } -> different_than<void>;
         { opt.has_value() } -> std::same_as<bool>;
-        static_cast<bool>(opt);
         { opt.value_or(std::declval<std::remove_cvref_t<decltype(opt.value())>>()) }
           -> std::convertible_to<std::remove_cvref_t<decltype(opt.value())>>;
     }
-    && std::same_as<decltype(std::declval<T>().value()), decltype(*std::declval<T>())>
-    && std::same_as<decltype(std::declval<T &>().value()), decltype(*std::declval<T &>())>;
+    && explicitly_convertible_to<T, bool>;
 ```
 
 ### map

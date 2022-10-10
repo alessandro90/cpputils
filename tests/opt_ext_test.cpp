@@ -1,4 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
+#include "cpputils/functional/expected.hpp"
 #include "cpputils/functional/opt_ext.hpp"
 #include "cpputils/types/optional_ref.hpp"
 #include <memory>
@@ -353,6 +354,23 @@ TEST_CASE("to-optional-like", "[opt-test]") {  // NOLINT
     {
         std::optional<int> opt{};
         REQUIRE(to_optional_like(opt) == std::optional<int>{});
+    }
+    {
+        int x{1};
+        optional_ref<int> opt{x};
+        auto &opt_like = to_optional_like(opt);
+        REQUIRE(&opt_like == &opt);
+    }
+    {
+        expected<int, const char *> e{flag_value, 10};
+        auto &opt_like = to_optional_like(e);
+        REQUIRE(&opt_like == &e);
+    }
+    {
+        int const x{1};
+        auto opt_like = to_optional_like(x);
+        STATIC_REQUIRE(std::is_same_v<decltype(opt_like), optional_ref<int const>>);
+        REQUIRE((opt_like && opt_like.value() == x));
     }
 }
 

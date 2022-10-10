@@ -476,16 +476,18 @@ namespace detail {
 
 }  // namespace detail
 
-template <typename Value_t, typename Error_t, expected_bad_access_policy ErrorPolicy_t = bad_expected_access_throw_policy>
+template <different_than<void> Value_t, different_than<void> Error_t, expected_bad_access_policy ErrorPolicy_t = bad_expected_access_throw_policy>
 class expected
     : private detail::expected_data<Value_t, Error_t, ErrorPolicy_t> {
     using base_expected = detail::expected_data<Value_t, Error_t, ErrorPolicy_t>;
     using base_expected::value_unchecked;
     using base_expected::error_unchecked;
+    using base_expected::value_t;
+    using base_expected::error_t;
 
 public:
-    using value_type = base_expected::value_t;
-    using error_type = base_expected::error_t;
+    using value_type = Value_t;
+    using error_type = Error_t;
 
     using base_expected::base_expected;  // Bring constructors in scope
 
@@ -496,7 +498,7 @@ public:
     using base_expected::operator bool;
     using base_expected::swap;
 
-    template <typename A, typename B, expected_bad_access_policy C>
+    template <different_than<void> A, different_than<void> B, expected_bad_access_policy C>
     friend class expected;
 
     template <typename ErrorPolicyB_t>
@@ -681,16 +683,24 @@ public:
         return as_optional_ref_impl();
     }
 
-    [[nodiscard]] constexpr std::optional<value_type> as_optional() & {
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() &
+        requires (!std::is_reference_v<value_type>)
+    {
         return as_optional_impl(*this);
     }
-    [[nodiscard]] constexpr std::optional<value_type> as_optional() const & {
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() const &  //
+        requires (!std::is_reference_v<value_type>)
+    {
         return as_optional_impl(*this);
     }
-    [[nodiscard]] constexpr std::optional<value_type> as_optional() && {
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() &&  //
+        requires (!std::is_reference_v<value_type>)
+    {
         return as_optional_impl(std::move(*this));
     }
-    [[nodiscard]] constexpr std::optional<value_type> as_optional() const && {
+    [[nodiscard]] constexpr std::optional<value_type> as_optional() const &&  //
+        requires (!std::is_reference_v<value_type>)
+    {
         return as_optional_impl(std::move(*this));
     }
 
@@ -769,13 +779,15 @@ private:
         return FWD(e);
     }
 
-    [[nodiscard]] static constexpr std::optional<value_type> as_optional_impl(auto &&self) {
+    [[nodiscard]] static constexpr std::optional<value_type> as_optional_impl(auto &&self)
+        requires (!std::is_reference_v<value_type>)
+    {
         if (self.has_value()) { return FWD(self).value_unchecked(); }
         return std::nullopt;
     }
 
-    [[nodiscard]] constexpr optional_ref<value_type> as_optional_ref_impl() const
-        requires (!std::is_reference_v<value_type>)
+    [[nodiscard]] constexpr optional_ref<std::remove_reference_t<value_type>> as_optional_ref_impl() const
+        requires std::is_reference_v<value_type>
     {
         if (has_value()) { return optional_ref{value_unchecked()}; }
         return std::nullopt;

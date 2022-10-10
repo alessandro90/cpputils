@@ -1,31 +1,20 @@
 #include "catch2/catch_test_macros.hpp"
 #include "cpputils/meta/traits.hpp"
 #include "cpputils/types/optional_ref.hpp"
+#include "test_utils.hpp"
 #include <optional>
 #include <type_traits>
 
+
 using namespace cpputils;
+using namespace cpputils::test_utils;
 
 namespace {
 struct S {
     int v;
 };
 
-struct move_detector {
-    move_detector() = default;
-    move_detector(move_detector const &) = default;
-    move_detector &operator=(move_detector const &) = default;
-    move_detector(move_detector &&other) noexcept {
-        other.moved = true;
-    };
-    move_detector &operator=(move_detector &&other) noexcept {
-        other.moved = true;
-        return *this;
-    }
-    ~move_detector() = default;
 
-    bool moved{false};
-};
 }  // namespace
 
 TEST_CASE("is-optional-like", "[optional-ref-test]") {
