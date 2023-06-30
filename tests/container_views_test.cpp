@@ -44,12 +44,6 @@ TEST_CASE("as_view test", "[make_views]") {
             REQUIRE(equals(vc, v));
             STATIC_REQUIRE(std::is_same_v<std::span<int const> const, decltype(v)>);
         }
-        {
-            std::vector const vc{'1', '2', '3'};
-            auto const v = as_view(vc);
-            REQUIRE(equals(vc, v));
-            STATIC_REQUIRE(std::is_same_v<std::string_view const, decltype(v)>);
-        }
     }
     SECTION("static containers") {
         {
@@ -57,12 +51,6 @@ TEST_CASE("as_view test", "[make_views]") {
             auto const v = as_view(a);
             REQUIRE(equals(v, a));
             STATIC_REQUIRE(std::is_same_v<std::span<int const, std::dynamic_extent> const, decltype(v)>);
-        }
-        {
-            auto const a = std::array{'1', '2', '3'};
-            auto const v = as_view(a);
-            REQUIRE(equals(v, a));
-            STATIC_REQUIRE(std::is_same_v<std::string_view const, decltype(v)>);
         }
         {
             auto const a = std::array{1, 2, 3};

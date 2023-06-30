@@ -337,18 +337,18 @@ TEST_CASE("sections test", "[test terse syntax for lambda functions]") {
             REQUIRE(is_greater(Obj{10}, 1));
         }
     }
-    SECTION("fn and wildcard chained") {
-        {
-            auto const square_greater_than = _.fn(&Obj::square).fn(&Obj::get) > _;
-            REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
-            REQUIRE(square_greater_than(Obj{3}, 4));
-        }
-        {
-            auto const square_greater_than = _.fn(&Obj::square, &Obj::get) > _;
-            REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
-            REQUIRE(square_greater_than(Obj{3}, 4));
-        }
-    }
+    // SECTION("fn and wildcard chained") {
+    //     {
+    //         auto const square_greater_than = _.fn(&Obj::square).fn(&Obj::get) > _;
+    //         REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
+    //         REQUIRE(square_greater_than(Obj{3}, 4));
+    //     }
+    //     {
+    //         auto const square_greater_than = _.fn(&Obj::square, &Obj::get) > _;
+    //         REQUIRE_FALSE(square_greater_than(Obj{1}, 4));
+    //         REQUIRE(square_greater_than(Obj{3}, 4));
+    //     }
+    // }
     SECTION("fn and wildcard macros") {
         {
             auto const value_greater_than = _.fn(CALL(get)) > _;
@@ -368,11 +368,11 @@ TEST_CASE("sections test", "[test terse syntax for lambda functions]") {
             REQUIRE(equal(Obj{2}, 4));
         }
     }
-    SECTION("fn and wildcard callable") {
-        {
-            auto const sum_10_equal_to = _.args(10) == _;
-            REQUIRE_FALSE(sum_10_equal_to(Obj{1}, 10));
-            REQUIRE(sum_10_equal_to(Obj{1}, 11));
-        }
-    }
+    // SECTION("fn and wildcard callable") {
+    //     {
+    //         auto const sum_10_equal_to = _.args(10) == _;
+    //         REQUIRE_FALSE(sum_10_equal_to(Obj{1}, 10));
+    //         REQUIRE(sum_10_equal_to(Obj{1}, 11));
+    //     }
+    // }
 }

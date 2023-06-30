@@ -1,6 +1,7 @@
-#include "cpputils/functional/composition.hpp"
+// #include "cpputils/functional/composition.hpp"
 #include <catch2/catch_all.hpp>
 
+#include "cpputils/functional/composition.hpp"
 using namespace cpputils;
 
 namespace {

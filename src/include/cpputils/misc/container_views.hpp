@@ -28,13 +28,22 @@ concept character =
     || std::same_as<C, char8_t>;
 
 // Dummy conversion for character literals. Implicit conversion to string view and just return it (did not find a better way yet, cannot use templates)
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<char> s) -> std::basic_string_view<char> { return s; }
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<signed char> s) -> std::basic_string_view<signed char> { return s; }
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<unsigned char> s) -> std::basic_string_view<unsigned char> { return s; }
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<wchar_t> s) -> std::basic_string_view<wchar_t> { return s; }
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<char16_t> s) -> std::basic_string_view<char16_t> { return s; }
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<char32_t> s) -> std::basic_string_view<char32_t> { return s; }
-[[nodiscard]] constexpr auto as_view(std::basic_string_view<char8_t> s) -> std::basic_string_view<char8_t> { return s; }
+// [[nodiscard]] constexpr auto as_view(std::string const &s) -> std::basic_string_view<char> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<char> const &s) -> std::basic_string_view<char> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<signed char> const &s) -> std::basic_string_view<signed char> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<unsigned char> const &s) -> std::basic_string_view<unsigned char> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<wchar_t> const &s) -> std::basic_string_view<wchar_t> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<char16_t> const &s) -> std::basic_string_view<char16_t> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<char32_t> const &s) -> std::basic_string_view<char32_t> { return s; }
+[[nodiscard]] constexpr auto as_view(std::basic_string<char8_t> const &s) -> std::basic_string_view<char8_t> { return s; }
+
+[[nodiscard]] constexpr auto as_view(char const *s) -> std::basic_string_view<char> { return s; }
+[[nodiscard]] constexpr auto as_view(signed char const *s) -> std::basic_string_view<signed char> { return s; }
+[[nodiscard]] constexpr auto as_view(unsigned char const *s) -> std::basic_string_view<unsigned char> { return s; }
+[[nodiscard]] constexpr auto as_view(wchar_t const *s) -> std::basic_string_view<wchar_t> { return s; }
+[[nodiscard]] constexpr auto as_view(char16_t const *s) -> std::basic_string_view<char16_t> { return s; }
+[[nodiscard]] constexpr auto as_view(char32_t const *s) -> std::basic_string_view<char32_t> { return s; }
+[[nodiscard]] constexpr auto as_view(char8_t const *s) -> std::basic_string_view<char8_t> { return s; }
 
 namespace detail {
     template <std::size_t N>
@@ -81,11 +90,6 @@ constexpr auto as_view(T (&&a)[N]) = delete;  // NOLINT
 [[nodiscard]] constexpr auto as_view(std::ranges::contiguous_range auto &range) -> std::span<std::ranges::range_value_t<decltype(range)>> requires std::ranges::sized_range<decltype(range)>
 {
     return std::span{range};
-}
-
-[[nodiscard]] constexpr auto as_view(std::ranges::contiguous_range auto const &range) requires std::ranges::sized_range<decltype(range)> && character<std::ranges::range_value_t<decltype(range)>>
-{
-    return std::basic_string_view{std::ranges::begin(range), std::ranges::end(range)};
 }
 
 constexpr auto as_view(std::ranges::contiguous_range auto &&range) requires std::ranges::sized_range<decltype(range)>
