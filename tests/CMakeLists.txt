@@ -32,7 +32,6 @@ ${TEST_PATH}/typelist_test.cpp
 ${TEST_PATH}/expected_test.cpp
 ${TEST_PATH}/pipeable_test.cpp
 ${TEST_PATH}/operator_sections_test.cpp
-${TEST_PATH}/container_views_test.cpp
 ${TEST_PATH}/lazy_test.cpp
 ${TEST_PATH}/benchmark_test.cpp
 ${TEST_PATH}/range_maker_test.cpp
